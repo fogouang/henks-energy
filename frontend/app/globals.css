@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark Theme Palette - Extracted from dashboard images */
+  --color-background: #1A202C;      /* Very dark navy/almost black - main background */
+  --color-surface: #2D3748;         /* Slightly lighter dark blue-gray - card/widget surfaces */
+  --color-border: #4A5568;           /* Subtle dark gray - borders and separators */
+  --color-text: #F7FAFC;             /* White/very light gray - primary text */
+  --color-text-muted: #A0AEC0;      /* Muted gray - secondary text */
+  --color-accent1: #FF6B35;         /* Vibrant orange - primary accent */
+  --color-accent2: #00CED1;         /* Bright teal/cyan - secondary accent */
+  
+  /* Legacy colors - kept for compatibility, mapped to new theme */
+  --color-navy: #1A202C;
+  --color-navy-dark: #0f1419;
+  --color-brand: #FF6B35;
+  --color-brand-dark: #E55A2B;
+  --color-brand-light: #FF8C5A;
+  --color-brand-soft: #2D3748;
+  --color-blue-bright: #00CED1;
+  --color-blue-light: #4FD1C7;
+  --color-blue-soft: #2D3748;
+  --color-success: #10b981;
+  --color-energy-green: #10b981;
+  --color-energy-dark-green: #059669;
+  --color-warning: #f59e0b;
+  --color-critical: #ef4444;
+  --color-info: #00CED1;
+  --color-inactive: #718096;
+  --color-gray-light: #4A5568;
+  --color-gray-medium: #718096;
+  --color-gray-dark: #A0AEC0;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Base element styles for dark theme */
+button {
+  @apply transition-colors;
+}
+
+input,
+select,
+textarea {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  @apply border rounded-md px-3 py-2 transition-colors;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-accent2);
+  box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.1);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg p-6;
+    background: rgba(45, 55, 72, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 206, 209, 0.3);
+    box-shadow: 
+      0 0 15px rgba(0, 206, 209, 0.15),
+      0 0 30px rgba(0, 206, 209, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  
+  .card:hover {
+    border-color: rgba(0, 206, 209, 0.5);
+    box-shadow: 
+      0 0 20px rgba(0, 206, 209, 0.25),
+      0 0 40px rgba(0, 206, 209, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  
+  .btn-primary {
+    background-color: var(--color-accent1);
+    color: var(--color-text);
+    @apply px-4 py-2 rounded-md transition-colors;
+  }
+  
+  .btn-primary:hover {
+    background-color: #E55A2B;
+  }
+  
+  .btn-secondary {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    @apply px-4 py-2 rounded-md transition-colors;
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--color-border);
+  }
+}

@@ -1,0 +1,991 @@
+{
+	"info": {
+		"_postman_id": "jsenergy-edge-device-api",
+		"name": "JSEnergy Edge Device API",
+		"description": "Postman collection for JSEnergy Dashboard Edge Device API endpoints. This collection includes all measurement endpoints that edge devices use to send data to the system, as well as firmware update endpoints.\n\n**Environments:**\n- **Local**: http://localhost:8000\n- **Production**: https://jsenergyapi.aitech.work\n\n**Authentication:**\n- **Device endpoints**: Use `X-Device-Token` header or `Authorization: Device <token>`\n- **Admin endpoints**: Use `Authorization: Bearer <jwt_token>`\n\n**Response Format:**\nMeasurement endpoints return:\n```json\n{\n  \"accepted\": 5,\n  \"total_rows_added\": 5,\n  \"version\": \"2.0.0\",\n  \"data\": [...]\n}\n```",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "jsenergy"
+	},
+	"item": [
+		{
+			"name": "Device Registration",
+			"item": [
+				{
+					"name": "Register Edge Device",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// This endpoint requires admin/user JWT token, not device token",
+									"// Typically done through web dashboard, but included here for reference"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "User JWT token (not device token)"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Raspberry Pi 1\",\n  \"installation_id\": {{installation_id}},\n  \"description\": \"Main monitoring device\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices"
+							]
+						},
+						"description": "Register a new edge device. Returns device token (shown only once).\n\n**Note:** This endpoint requires user JWT authentication, not device token. Typically done through web dashboard."
+					},
+					"response": []
+				}
+			],
+			"description": "Device registration endpoints (typically done by administrators)"
+		},
+		{
+			"name": "Device Management (JWT Auth)",
+			"item": [
+				{
+					"name": "Get Edge Device Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "User JWT token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices/{{device_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices",
+								"{{device_id}}"
+							]
+						},
+						"description": "Get edge device details including reverse SSH status.\n\n**Response:**\n```json\n{\n  \"id\": 1,\n  \"installation_id\": 1,\n  \"name\": \"Raspberry Pi 1\",\n  \"description\": \"Main monitoring device\",\n  \"is_active\": true,\n  \"last_seen_at\": \"2025-01-11T16:00:00Z\",\n  \"created_at\": \"2025-01-11T15:00:00Z\",\n  \"updated_at\": \"2025-01-11T15:00:00Z\",\n  \"reverse_ssh_enabled\": false\n}\n```\n\n**Note:** `reverse_ssh_enabled` is `true` if reverse SSH is enabled, or `false` if disabled or no configuration exists (default)."
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Reverse SSH",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "User JWT token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices/{{device_id}}/reverse-ssh/toggle?enabled=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices",
+								"{{device_id}}",
+								"reverse-ssh",
+								"toggle"
+							],
+							"query": [
+								{
+									"key": "enabled",
+									"value": "true",
+									"description": "Set to true to enable or false to disable Reverse SSH"
+								}
+							]
+						},
+						"description": "Toggle Reverse SSH enabled/disabled state for an edge device.\n\n**Query Parameters:**\n- `enabled` (boolean, required): Set to `true` to enable or `false` to disable Reverse SSH\n\n**Response:**\n```json\n{\n  \"id\": 1,\n  \"installation_id\": 1,\n  \"name\": \"Raspberry Pi 1\",\n  \"description\": \"Main monitoring device\",\n  \"is_active\": true,\n  \"last_seen_at\": \"2025-01-11T16:00:00Z\",\n  \"created_at\": \"2025-01-11T15:00:00Z\",\n  \"updated_at\": \"2025-01-11T15:00:00Z\",\n  \"reverse_ssh_enabled\": true\n}\n```\n\n**Note:** If no configuration exists and enabling, automatically creates one with systemwide defaults. If disabling and no config exists, returns success (already disabled by default)."
+					},
+					"response": []
+				}
+			],
+			"description": "Device management endpoints using JWT authentication (for dashboard/admin use)"
+		},
+		{
+			"name": "Configuration",
+			"item": [
+				{
+					"name": "List Inverters",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/inverters",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"inverters"
+							]
+						},
+						"description": "Get list of inverters for the edge device's installation. Returns inverter IDs and numbers that can be used for sending inverter measurements.\n\n**Response:**\n```json\n{\n  \"inverters\": [\n    {\n      \"id\": 1,\n      \"inverter_number\": 1\n    },\n    {\n      \"id\": 2,\n      \"inverter_number\": 2\n    }\n  ],\n  \"total\": 2\n}\n```\n\n**Note:** Use the `id` field from the response as the `inverter_id` when sending inverter measurements."
+					},
+					"response": []
+				},
+				{
+					"name": "List EV Chargers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/chargers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"chargers"
+							]
+						},
+						"description": "Get list of EV chargers for the edge device's installation. Returns charger IDs and numbers that can be used for sending EV charger measurements.\n\n**Response:**\n```json\n{\n  \"chargers\": [\n    {\n      \"id\": 1,\n      \"charger_number\": 1\n    },\n    {\n      \"id\": 2,\n      \"charger_number\": 2\n    }\n  ],\n  \"total\": 2\n}\n```\n\n**Note:** Use the `id` field from the response as the `charger_id` when sending EV charger measurements. This endpoint is only available if the EV chargers feature is enabled."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Device Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/device",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"device"
+							]
+						},
+						"description": "Get device details for the authenticated device. Returns the device's own details including reverse SSH status.\n\n**Response:**\n```json\n{\n  \"id\": 1,\n  \"installation_id\": 1,\n  \"name\": \"Raspberry Pi 1\",\n  \"description\": \"Main monitoring device\",\n  \"is_active\": true,\n  \"last_seen_at\": \"2025-01-12T16:00:00Z\",\n  \"created_at\": \"2025-01-11T15:00:00Z\",\n  \"updated_at\": \"2025-01-12T16:00:00Z\",\n  \"reverse_ssh_enabled\": false\n}\n```\n\n**Note:** This endpoint requires device token authentication (X-Device-Token header). The device token must match the installation_id in the URL path. `reverse_ssh_enabled` is `true` if enabled, or `false` if disabled or no config exists (default)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Reverse SSH Config",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices/{{device_id}}/reverse-ssh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices",
+								"{{device_id}}",
+								"reverse-ssh"
+							]
+						},
+						"description": "Get reverse SSH configuration for an edge device. Returns default config (enabled=false) if none exists.\n\n**Response (if config exists):**\n```json\n{\n  \"id\": 1,\n  \"device_id\": 41,\n  \"enabled\": true,\n  \"host\": \"support.jsenergy.nl\",\n  \"user\": \"rpi-tunnel\",\n  \"ssh_port\": 22,\n  \"created_at\": \"2025-01-12T11:00:00Z\",\n  \"updated_at\": \"2025-01-12T11:00:00Z\"\n}\n```\n\n**Response (if no config exists - defaults):**\n```json\n{\n  \"id\": null,\n  \"device_id\": 41,\n  \"enabled\": false,\n  \"host\": \"support.jsenergy.nl\",\n  \"user\": \"rpi-tunnel\",\n  \"ssh_port\": 22,\n  \"created_at\": null,\n  \"updated_at\": null\n}\n```\n\n**Note:** This endpoint requires device token authentication (X-Device-Token header). Host and user use systemwide defaults from server config."
+					},
+					"response": []
+				},
+				{
+					"name": "Create or Update Reverse SSH Config",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"enabled\": true,\n  \"host\": \"support.example.com\",\n  \"user\": \"rpi-tunnel\",\n  \"ssh_port\": 22\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices/{{device_id}}/reverse-ssh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices",
+								"{{device_id}}",
+								"reverse-ssh"
+							]
+						},
+						"description": "Create or update reverse SSH configuration for an edge device. If a configuration already exists, it will be updated.\n\n**Request Body:**\n- `enabled`: Boolean (default: false) - Whether the reverse SSH tunnel is enabled\n- `host`: String (optional) - SSH server hostname or IP (defaults to systemwide config)\n- `user`: String (optional) - SSH username (defaults to systemwide config)\n- `ssh_port`: Integer (default: 22, range: 1-65535) - SSH server port\n\n**Response:**\n```json\n{\n  \"id\": 1,\n  \"device_id\": 41,\n  \"enabled\": true,\n  \"host\": \"support.jsenergy.nl\",\n  \"user\": \"rpi-tunnel\",\n  \"ssh_port\": 22,\n  \"created_at\": \"2025-01-12T11:00:00Z\",\n  \"updated_at\": \"2025-01-12T11:00:00Z\"\n}\n```\n\n**Note:** This endpoint requires device token authentication (X-Device-Token header). Host/user default to systemwide config if not provided."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Reverse SSH Config",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"enabled\": false,\n  \"ssh_port\": 2222\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices/{{device_id}}/reverse-ssh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices",
+								"{{device_id}}",
+								"reverse-ssh"
+							]
+						},
+						"description": "Partially update reverse SSH configuration for an edge device. Only provided fields will be updated.\n\n**Request Body:** All fields are optional\n- `enabled`: Boolean - Whether the reverse SSH tunnel is enabled\n- `host`: String - SSH server hostname or IP address\n- `user`: String - SSH username\n- `ssh_port`: Integer (range: 1-65535) - SSH server port\n\n**Response:**\n```json\n{\n  \"id\": 1,\n  \"device_id\": 41,\n  \"enabled\": false,\n  \"host\": \"support.jsenergy.nl\",\n  \"user\": \"rpi-tunnel\",\n  \"ssh_port\": 2222,\n  \"created_at\": \"2025-01-12T11:00:00Z\",\n  \"updated_at\": \"2025-01-12T11:05:00Z\"\n}\n```\n\n**Note:** This endpoint requires device token authentication (X-Device-Token header). Returns 404 if configuration doesn't exist."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Reverse SSH Config",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/edge-devices/{{device_id}}/reverse-ssh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"edge-devices",
+								"{{device_id}}",
+								"reverse-ssh"
+							]
+						},
+						"description": "Delete reverse SSH configuration for an edge device (soft delete).\n\n**Response:** 204 No Content\n\n**Note:** This endpoint requires device token authentication (X-Device-Token header). The device token must match the installation_id and device_id in the URL path. Returns 404 if configuration doesn't exist."
+					},
+					"response": []
+				}
+			],
+			"description": "Configuration endpoints for retrieving device IDs needed for measurements"
+		},
+		{
+			"name": "Firmware Updates",
+			"item": [
+				{
+					"name": "Get Latest Firmware",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/device/firmware/latest",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"device",
+								"firmware",
+								"latest"
+							]
+						},
+						"description": "Get the latest available firmware info. The device should compare version/build_number locally to decide if an update is needed.\n\n**Response (200):**\n```json\n{\n  \"id\": 1,\n  \"version\": \"1.3.0\",\n  \"build_number\": 150,\n  \"file_size\": 52428800,\n  \"checksum\": \"abc123...\",\n  \"release_notes\": \"Bug fixes and improvements\",\n  \"download_url\": \"/api/device/firmware/download/1\",\n  \"created_at\": \"2025-01-17T10:00:00Z\"\n}\n```\n\n**Response (404 - No Firmware Available):**\nNo firmware has been uploaded yet.\n\n**Usage:**\nDevice compares `version` and `build_number` from response with its own values to determine if update is needed."
+					},
+					"response": []
+				},
+				{
+					"name": "Download Firmware",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/device/firmware/download/{{firmware_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"device",
+								"firmware",
+								"download",
+								"{{firmware_id}}"
+							]
+						},
+						"description": "Download firmware file. Returns the firmware ZIP file as a binary stream.\n\n**Response Headers:**\n- `Content-Type`: application/zip\n- `X-Firmware-Version`: Firmware version string\n- `X-Firmware-Build`: Build number\n- `X-Firmware-Checksum`: SHA256 checksum for integrity verification\n\n**Response Body:** Binary ZIP file\n\n**Error Responses:**\n- 401: Invalid device token\n- 404: Firmware not found"
+					},
+					"response": []
+				}
+			],
+			"description": "Firmware update endpoints for edge devices to check and download the latest firmware"
+		},
+		{
+			"name": "Firmware Management (Admin)",
+			"item": [
+				{
+					"name": "Upload Firmware",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "Admin JWT token"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"description": "Firmware ZIP file"
+								},
+								{
+									"key": "version",
+									"value": "1.0.0",
+									"type": "text",
+									"description": "Firmware version (e.g., 1.2.0)"
+								},
+								{
+									"key": "build_number",
+									"value": "1",
+									"type": "text",
+									"description": "Build number (integer)"
+								},
+								{
+									"key": "release_notes",
+									"value": "Initial release",
+									"type": "text",
+									"description": "Optional release notes"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/firmware",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"firmware"
+							]
+						},
+						"description": "Upload a new firmware version (admin only).\n\n**Request Body (multipart/form-data):**\n- `file`: Firmware ZIP file (required)\n- `version`: Version string, e.g., \"1.2.0\" (required, max 50 chars)\n- `build_number`: Build number integer (required, >= 1)\n- `release_notes`: Release notes text (optional)\n\n**Response (201):**\n```json\n{\n  \"id\": 1,\n  \"version\": \"1.2.0\",\n  \"build_number\": 123,\n  \"filename\": \"firmware_v1.2.0_b123_20250117_100000.zip\",\n  \"file_size\": 52428800,\n  \"checksum\": \"abc123...\",\n  \"release_notes\": \"Bug fixes and improvements\",\n  \"created_at\": \"2025-01-17T10:00:00Z\",\n  \"updated_at\": \"2025-01-17T10:00:00Z\"\n}\n```\n\n**Error Responses:**\n- 400: Invalid file type (only ZIP allowed)\n- 401: Not authenticated\n- 403: Not an admin\n- 409: Version + build_number combination already exists"
+					},
+					"response": []
+				},
+				{
+					"name": "List Firmware",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "Admin JWT token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/firmware",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"firmware"
+							]
+						},
+						"description": "List all firmware versions (admin only). Results are sorted by upload date (newest first).\n\n**Response:**\n```json\n{\n  \"firmware\": [\n    {\n      \"id\": 2,\n      \"version\": \"1.3.0\",\n      \"build_number\": 150,\n      \"filename\": \"firmware_v1.3.0_b150_20250117_120000.zip\",\n      \"file_size\": 54525952,\n      \"created_at\": \"2025-01-17T12:00:00Z\"\n    },\n    {\n      \"id\": 1,\n      \"version\": \"1.2.0\",\n      \"build_number\": 123,\n      \"filename\": \"firmware_v1.2.0_b123_20250117_100000.zip\",\n      \"file_size\": 52428800,\n      \"created_at\": \"2025-01-17T10:00:00Z\"\n    }\n  ],\n  \"total\": 2\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Firmware Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "Admin JWT token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/firmware/{{firmware_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"firmware",
+								"{{firmware_id}}"
+							]
+						},
+						"description": "Get detailed information about a specific firmware version (admin only).\n\n**Response:**\n```json\n{\n  \"id\": 1,\n  \"version\": \"1.2.0\",\n  \"build_number\": 123,\n  \"filename\": \"firmware_v1.2.0_b123_20250117_100000.zip\",\n  \"file_size\": 52428800,\n  \"checksum\": \"abc123...\",\n  \"release_notes\": \"Bug fixes and improvements\",\n  \"created_at\": \"2025-01-17T10:00:00Z\",\n  \"updated_at\": \"2025-01-17T10:00:00Z\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Firmware",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_jwt_token}}",
+								"description": "Admin JWT token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/firmware/{{firmware_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"firmware",
+								"{{firmware_id}}"
+							]
+						},
+						"description": "Delete a firmware version (admin only, soft delete).\n\n**Response:** 204 No Content\n\n**Error Responses:**\n- 401: Not authenticated\n- 403: Not an admin\n- 404: Firmware not found"
+					},
+					"response": []
+				}
+			],
+			"description": "Firmware management endpoints for administrators to upload and manage firmware versions"
+		},
+		{
+			"name": "Measurements",
+			"item": [
+				{
+					"name": "Battery Measurement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate current UTC timestamp",
+									"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+									"pm.environment.set('current_timestamp', now);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"soc_percentage\": 65.5,\n    \"power_kw\": -2.3,\n    \"voltage\": 48.0,\n    \"temperature\": 25.5,\n    \"timestamp\": \"{{current_timestamp}}\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/measurements/battery",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"measurements",
+								"battery"
+							]
+						},
+						"description": "Send battery measurement data (batch support).\n\n**Request Body:** Array of battery measurements\n\n**Required Fields:**\n- `soc_percentage`: State of charge (0-100)\n- `power_kw`: Battery power in kW (negative = charging, positive = discharging)\n- `timestamp`: ISO 8601 UTC timestamp\n\n**Optional Fields:**\n- `voltage`: Battery voltage in volts\n- `temperature`: Battery temperature in Celsius\n\n**Response:**\n```json\n{\n  \"accepted\": 1,\n  \"total_rows_added\": 1,\n  \"version\": \"2.0.0\",\n  \"data\": [\n    {\n      \"soc_percentage\": 65.5,\n      \"power_kw\": -2.3,\n      \"voltage\": 48.0,\n      \"temperature\": 25.5,\n      \"timestamp\": \"2025-01-11T16:00:00Z\"\n    }\n  ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Inverter Measurement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate current UTC timestamp",
+									"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+									"pm.environment.set('current_timestamp', now);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"power_kw\": 3.2,\n    \"energy_kwh_daily\": 12.5,\n    \"curtailment_percentage\": 0.0,\n    \"timestamp\": \"{{current_timestamp}}\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/measurements/inverter/{{inverter_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"measurements",
+								"inverter",
+								"{{inverter_id}}"
+							]
+						},
+						"description": "Send inverter measurement data (batch support).\n\n**Request Body:** Array of inverter measurements\n\n**Required Fields:**\n- `power_kw`: Inverter power output in kW (positive = generating)\n- `timestamp`: ISO 8601 UTC timestamp\n\n**Optional Fields:**\n- `energy_kwh_daily`: Daily energy production in kWh (default: 0.0)\n- `curtailment_percentage`: Curtailment percentage 0-100 (default: 0.0)\n\n**Note:** The `inverter_id` in the URL must match an existing inverter for the installation.\n\n**Response:**\n```json\n{\n  \"accepted\": 1,\n  \"total_rows_added\": 1,\n  \"version\": \"2.0.0\",\n  \"data\": [\n    {\n      \"power_kw\": 3.2,\n      \"energy_kwh_daily\": 12.5,\n      \"curtailment_percentage\": 0.0,\n      \"timestamp\": \"2025-01-11T16:00:00Z\"\n    }\n  ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Meter Measurement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate current UTC timestamp",
+									"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+									"pm.environment.set('current_timestamp', now);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"import_kw\": 0.5,\n    \"export_kw\": 1.2,\n    \"import_kwh\": 12.5,\n    \"export_kwh\": 28.8,\n    \"l1_a\": 2.3,\n    \"l2_a\": 2.1,\n    \"l3_a\": 2.4,\n    \"timestamp\": \"{{current_timestamp}}\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/measurements/meter",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"measurements",
+								"meter"
+							]
+						},
+						"description": "Send meter measurement data (batch support).\n\n**Request Body:** Array of meter measurements\n\n**Required Fields:**\n- `import_kw`: Grid import power in kW\n- `export_kw`: Grid export power in kW\n- `timestamp`: ISO 8601 UTC timestamp\n\n**Optional Fields:**\n- `import_kwh`: Cumulative import energy in kWh (default: 0.0)\n- `export_kwh`: Cumulative export energy in kWh (default: 0.0)\n- `l1_a`, `l2_a`, `l3_a`: Phase currents in amperes (default: 0.0)\n\n**Response:**\n```json\n{\n  \"accepted\": 1,\n  \"total_rows_added\": 1,\n  \"version\": \"2.0.0\",\n  \"data\": [\n    {\n      \"import_kw\": 0.5,\n      \"export_kw\": 1.2,\n      \"import_kwh\": 12.5,\n      \"export_kwh\": 28.8,\n      \"l1_a\": 2.3,\n      \"l2_a\": 2.1,\n      \"l3_a\": 2.4,\n      \"timestamp\": \"2025-01-11T16:00:00Z\"\n    }\n  ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Generator Measurement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate current UTC timestamp",
+									"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+									"pm.environment.set('current_timestamp', now);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"status\": \"off\",\n    \"fuel_consumption_lph\": 0.0,\n    \"charging_power_kw\": 0.0,\n    \"timestamp\": \"{{current_timestamp}}\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/measurements/generator",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"measurements",
+								"generator"
+							]
+						},
+						"description": "Send generator measurement data (batch support).\n\n**Request Body:** Array of generator measurements\n\n**Required Fields:**\n- `status`: Generator status (max 20 chars, e.g., \"off\", \"on\", \"starting\", \"error\")\n- `timestamp`: ISO 8601 UTC timestamp\n\n**Optional Fields:**\n- `fuel_consumption_lph`: Fuel consumption in liters per hour (default: 0.0)\n- `charging_power_kw`: Charging power in kW (default: 0.0)\n\n**Note:** This endpoint is only available if the generator feature is enabled for your installation.\n\n**Response:**\n```json\n{\n  \"accepted\": 1,\n  \"total_rows_added\": 1,\n  \"version\": \"2.0.0\",\n  \"data\": [\n    {\n      \"status\": \"off\",\n      \"fuel_consumption_lph\": 0.0,\n      \"charging_power_kw\": 0.0,\n      \"timestamp\": \"2025-01-11T16:00:00Z\"\n    }\n  ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "EV Charger Measurement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate current UTC timestamp",
+									"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+									"pm.environment.set('current_timestamp', now);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"power_kw\": 7.2,\n    \"energy_kwh\": 15.5,\n    \"source\": \"battery\",\n    \"revenue_eur\": 6.23,\n    \"timestamp\": \"{{current_timestamp}}\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/measurements/charger/{{charger_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"measurements",
+								"charger",
+								"{{charger_id}}"
+							]
+						},
+						"description": "Send EV charger measurement data (batch support).\n\n**Request Body:** Array of EV charger measurements\n\n**Required Fields:**\n- `power_kw`: Charger power in kW\n- `source`: Energy source (max 20 chars, e.g., \"battery\", \"grid\", \"pv\")\n- `timestamp`: ISO 8601 UTC timestamp\n\n**Optional Fields:**\n- `energy_kwh`: Energy delivered in kWh (default: 0.0)\n- `revenue_eur`: Revenue in EUR (default: 0.0)\n\n**Note:** The `charger_id` in the URL must match an existing EV charger for the installation. This endpoint is only available if the EV chargers feature is enabled.\n\n**Response:**\n```json\n{\n  \"accepted\": 1,\n  \"total_rows_added\": 1,\n  \"version\": \"2.0.0\",\n  \"data\": [\n    {\n      \"power_kw\": 7.2,\n      \"energy_kwh\": 15.5,\n      \"source\": \"battery\",\n      \"revenue_eur\": 6.23,\n      \"timestamp\": \"2025-01-11T16:00:00Z\"\n    }\n  ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Measurements Upload",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate current UTC timestamp",
+									"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+									"pm.environment.set('current_timestamp', now);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Device-Token",
+								"value": "{{device_token}}",
+								"description": "Device authentication token"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"battery\": [\n    {\n      \"soc_percentage\": 65.5,\n      \"power_kw\": -2.3,\n      \"voltage\": 48.0,\n      \"temperature\": 25.5,\n      \"timestamp\": \"{{current_timestamp}}\"\n    }\n  ],\n  \"inverter\": {\n    \"inverter_id\": {{inverter_id}},\n    \"measurements\": [\n      {\n        \"power_kw\": 3.2,\n        \"energy_kwh_daily\": 12.5,\n        \"curtailment_percentage\": 0.0,\n        \"timestamp\": \"{{current_timestamp}}\"\n      }\n    ]\n  },\n  \"meter\": [\n    {\n      \"import_kw\": 0.5,\n      \"export_kw\": 1.2,\n      \"import_kwh\": 12.5,\n      \"export_kwh\": 28.8,\n      \"l1_a\": 2.3,\n      \"l2_a\": 2.1,\n      \"l3_a\": 2.4,\n      \"timestamp\": \"{{current_timestamp}}\"\n    }\n  ],\n  \"generator\": [\n    {\n      \"status\": \"off\",\n      \"fuel_consumption_lph\": 0.0,\n      \"charging_power_kw\": 0.0,\n      \"timestamp\": \"{{current_timestamp}}\"\n    }\n  ],\n  \"ev_charger\": {\n    \"charger_id\": {{charger_id}},\n    \"measurements\": [\n      {\n        \"power_kw\": 7.2,\n        \"energy_kwh\": 15.5,\n        \"source\": \"battery\",\n        \"revenue_eur\": 6.23,\n        \"timestamp\": \"{{current_timestamp}}\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/installations/{{installation_id}}/measurements/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"installations",
+								"{{installation_id}}",
+								"measurements",
+								"bulk"
+							]
+						},
+						"description": "Upload measurements for all device types in a single API call (bulk upload).\n\n**Request Body:** Object with optional arrays/objects for each device type:\n- `battery`: Array of battery measurements\n- `inverter`: Object with `inverter_id` and `measurements` array\n- `meter`: Array of meter measurements\n- `generator`: Array of generator measurements\n- `ev_charger`: Object with `charger_id` and `measurements` array\n\n**Requirements:**\n- At least one device type must be provided with at least one measurement\n- All measurements are processed atomically in a single transaction\n- If any device type fails validation, the entire operation is rolled back\n\n**Response:**\n```json\n{\n  \"accepted\": 5,\n  \"total_rows_added\": 5,\n  \"version\": \"2.0.0\",\n  \"battery\": [...],\n  \"inverter\": [...],\n  \"meter\": [...],\n  \"generator\": [...],\n  \"ev_charger\": [...]\n}\n```\n\n**Benefits:**\n- Reduces network overhead\n- Improves efficiency when collecting data from multiple devices simultaneously\n- All measurements succeed or fail together (atomic transaction)"
+					},
+					"response": []
+				}
+			],
+			"description": "Measurement endpoints for sending device data to the API. All endpoints support batch operations (arrays of measurements)."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"// Generates current UTC timestamp for all requests",
+					"const now = new Date().toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+					"pm.environment.set('current_timestamp', now);"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"// Log response for debugging",
+					"if (pm.response.code === 201) {",
+					"    const response = pm.response.json();",
+					"    console.log('Measurement created successfully');",
+					"    console.log('Accepted:', response.accepted);",
+					"    console.log('Total rows added:', response.total_rows_added);",
+					"    console.log('API Version:', response.version);",
+					"} else if (pm.response.code === 401) {",
+					"    console.error('Authentication failed - check device token');",
+					"} else if (pm.response.code === 403) {",
+					"    console.error('Access denied - check installation ID or feature availability');",
+					"} else if (pm.response.code === 404) {",
+					"    console.error('Resource not found - check IDs');",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string",
+			"description": "API base URL - will be overridden by environment variable (Local: http://localhost:8000, Production: https://jsenergyapi.aitech.work)"
+		},
+		{
+			"key": "device_token",
+			"value": "",
+			"type": "string",
+			"description": "Device authentication token (obtained during device registration)"
+		},
+		{
+			"key": "installation_id",
+			"value": "1",
+			"type": "string",
+			"description": "Installation ID that this device monitors"
+		},
+		{
+			"key": "device_id",
+			"value": "1",
+			"type": "string",
+			"description": "Edge device ID (for reverse SSH configuration endpoints)"
+		},
+		{
+			"key": "inverter_id",
+			"value": "1",
+			"type": "string",
+			"description": "Inverter ID (for inverter measurements)"
+		},
+		{
+			"key": "charger_id",
+			"value": "1",
+			"type": "string",
+			"description": "EV Charger ID (for EV charger measurements)"
+		},
+		{
+			"key": "user_jwt_token",
+			"value": "",
+			"type": "string",
+			"description": "User JWT token (only needed for device registration endpoint)"
+		},
+		{
+			"key": "current_timestamp",
+			"value": "",
+			"type": "string",
+			"description": "Current UTC timestamp (auto-generated by pre-request script)"
+		},
+		{
+			"key": "firmware_id",
+			"value": "1",
+			"type": "string",
+			"description": "Firmware ID (for firmware download/details endpoints)"
+		}
+	]
+}

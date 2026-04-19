@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+.npm
+.yarn
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.env
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+
+# Documentation (except Postman files needed by frontend Docker build)
+docs/
+!docs/JSEnergy_Edge_Device_API.postman_collection.json
+!docs/JSEnergy_Edge_Device_API_Local.postman_environment.json
+!docs/JSEnergy_Edge_Device_API_Production.postman_environment.json
+*.md
+
+# Logs
+*.log
+logs/
+

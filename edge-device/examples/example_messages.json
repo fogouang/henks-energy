@@ -1,0 +1,63 @@
+{
+  "battery_state": {
+    "topic": "installations/1/battery/state",
+    "payload": {
+      "timestamp": "2025-01-09T14:30:00Z",
+      "installation_id": 1,
+      "soc_percentage": 75.5,
+      "power_kw": 2.5,
+      "voltage": 48.2,
+      "temperature": 25.3,
+      "status": "charging"
+    }
+  },
+  "inverter_power": {
+    "topic": "installations/1/inverters/1/power",
+    "payload": {
+      "timestamp": "2025-01-09T14:30:00Z",
+      "installation_id": 1,
+      "inverter_number": 1,
+      "power_kw": 4.2,
+      "energy_kwh_daily": 12.5,
+      "curtailment_percentage": 0.0,
+      "status": "active"
+    }
+  },
+  "meter_reading": {
+    "topic": "installations/1/meter/reading",
+    "payload": {
+      "timestamp": "2025-01-09T14:30:00Z",
+      "installation_id": 1,
+      "import_kw": 0.5,
+      "export_kw": 2.0,
+      "import_kwh": 150.0,
+      "export_kwh": 50.0,
+      "l1_a": 2.1,
+      "l2_a": 2.0,
+      "l3_a": 2.2
+    }
+  },
+  "generator_status": {
+    "topic": "installations/1/generator/status",
+    "payload": {
+      "timestamp": "2025-01-09T14:30:00Z",
+      "installation_id": 1,
+      "status": "off",
+      "fuel_consumption_lph": 0.0,
+      "charging_power_kw": 0.0
+    }
+  },
+  "ev_charger_session": {
+    "topic": "installations/1/chargers/1/session",
+    "payload": {
+      "timestamp": "2025-01-09T14:30:00Z",
+      "installation_id": 1,
+      "charger_number": 1,
+      "power_kw": 7.2,
+      "energy_kwh": 15.5,
+      "source": "battery",
+      "session_active": true
+    }
+  }
+}
+
