@@ -1,33 +1,31 @@
 """EPEX spot price model for energy market prices."""
 from datetime import datetime
-
-from sqlalchemy import DateTime, Float, Index, String, func
+from sqlalchemy import DateTime, Float, func
 from sqlalchemy.orm import Mapped, mapped_column
-
 from backend.models.base import Base
 
 
 class EPEXSpotPrice(Base):
-    """EPEX spot price time-series data (hypertable)."""
+    """EPEX spot price - one record per hour."""
 
     __tablename__ = "epex_spot_prices"
 
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), primary_key=True, nullable=False
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    date_hour: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, unique=True, index=True
     )
-    region: Mapped[str] = mapped_column(
-        String(10), primary_key=True, nullable=False, index=True
-    )
-
-    price_eur_per_kwh: Mapped[float] = mapped_column(Float, nullable=False)
-
+    price: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
-
-    __table_args__ = (
-        Index("idx_epex_region_timestamp", "region", "timestamp"),
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
+    def __repr__(self) -> str:
+        return f"<EPEXSpotPrice(date_hour='{self.date_hour}', price={self.price})>"
