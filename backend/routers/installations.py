@@ -5,6 +5,7 @@ from typing import Annotated
 
 import httpx
 import pytz
+from backend.models.system_settings import SystemSetting
 import pycountry
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, select
@@ -39,7 +40,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/installations", tags=["installations"])
 
-
+@router.get("/reverse-ssh-host")
+async def get_reverse_ssh_host(db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
+        select(SystemSetting)
+        .where(SystemSetting.key == "REVERSE_SSH_HOST")
+        .limit(1)
+    )
+    config = result.scalar_one_or_none()
+    config_value = config.value if config else ''
+    return {"host": config_value}
+    
 @router.get("", response_model=InstallationList)
 async def list_installations(
     current_user: Annotated[User, Depends(get_current_user)],
