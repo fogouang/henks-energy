@@ -170,12 +170,39 @@ async def get_latest_measurements(
     battery_measurement = battery_result.scalar_one_or_none()
     latest_battery = None
     if battery_measurement:
+        # Get battery config from installation_configs
+        from backend.models.config import InstallationConfig
+        config_result = await db.execute(
+            select(InstallationConfig).where(
+                InstallationConfig.installation_id == installation_id,
+                InstallationConfig.config_key.in_(["BATTERY_CAPACITY", "BATTERY_BUFFER"]),
+            )
+        )
+        configs = {c.config_key: float(c.config_value) for c in config_result.scalars().all()}
+        
+        battery_capacity = configs.get("BATTERY_CAPACITY")
+        battery_buffer = configs.get("BATTERY_BUFFER")
+        
+        available_capacity = battery_measurement.available_capacity
+        available_percentage = None
+        if available_capacity is not None and battery_capacity:
+            available_percentage = (available_capacity / battery_capacity) * 100
+
+        charging_status = None
+        if battery_measurement.power_kw is not None:
+            charging_status = "CHARGING" if battery_measurement.power_kw > 0 else "DISCHARGING"
+
         latest_battery = LatestBatteryMeasurement(
             timestamp=battery_measurement.timestamp,
             soc_percentage=battery_measurement.soc_percentage,
             power_kw=battery_measurement.power_kw,
             voltage=battery_measurement.voltage,
             temperature=battery_measurement.temperature,
+            available_capacity=available_capacity,
+            available_percentage=available_percentage,
+            charging_status=charging_status,
+            battery_capacity=battery_capacity,
+            battery_buffer=battery_buffer,
         )
     
     # Get latest inverter measurements (one per inverter)
@@ -250,7 +277,6 @@ async def get_latest_measurements(
         generator=latest_generator,
         ev_chargers=latest_ev_chargers,
     )
-
 
 @router.get("/{installation_id}/history", response_model=HistoricalDataResponse)
 async def get_installation_history(
@@ -340,6 +366,7 @@ async def create_bulk_measurements(
                 power_kw=measurement.power_kw,
                 voltage=measurement.voltage,
                 temperature=measurement.temperature,
+                available_capacity=measurement.available_capacity,
             )
             for measurement in request.battery
         ]
@@ -705,6 +732,7 @@ async def create_battery_measurement(
             power_kw=measurement.power_kw,
             voltage=measurement.voltage,
             temperature=measurement.temperature,
+            available_capacity=measurement.available_capacity,
         )
         for measurement in measurements
     ]

@@ -48,6 +48,7 @@ class BatteryMeasurementCreate(BaseModel):
     power_kw: float
     voltage: float | None = None
     temperature: float | None = None
+    available_capacity: float | None = None
     timestamp: datetime
 
 
@@ -155,12 +156,16 @@ class LatestMeterMeasurement(BaseModel):
 
 class LatestBatteryMeasurement(BaseModel):
     """Schema for latest battery measurement."""
-
     timestamp: datetime
     soc_percentage: float
     power_kw: float
     voltage: float | None
     temperature: float | None
+    available_capacity: float | None = None  
+    available_percentage: float | None = None 
+    charging_status: str | None = None  
+    battery_capacity: float | None = None 
+    battery_buffer: float | None = None  
 
 
 class LatestInverterMeasurement(BaseModel):
