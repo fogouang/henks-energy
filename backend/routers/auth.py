@@ -11,8 +11,8 @@ from backend.auth.middleware import get_current_user
 from backend.auth.password import verify_password
 from backend.config import settings
 from backend.database import get_db
-from backend.models.user import User
-from backend.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse, UserResponse
+from backend.models.user import User,UserRole
+from backend.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse, UserResponse,UserCreate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -109,3 +109,31 @@ async def get_current_user_info(
     """Get current user information."""
     return current_user
 
+
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    data: UserCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Register a new user."""
+    result = await db.execute(select(User).where(User.email == data.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+    
+    from backend.auth.password import hash_password
+    user = User(
+        email=data.email,
+        password_hash=hash_password(data.password),
+        full_name=data.full_name,
+        role=data.role or UserRole.CUSTOMER,
+        is_active=True,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
