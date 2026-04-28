@@ -1186,6 +1186,21 @@ function DashboardContent() {
                   <div className="text-xs uppercase text-text-muted">
                     {t("dashboard.battery")}
                   </div>
+                  <div
+                    className="px-2 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      color:
+                        (batteryData?.power ?? 0) >= 0 ? "#10b981" : "#ef4444",
+                      backgroundColor:
+                        (batteryData?.power ?? 0) >= 0
+                          ? "#10b98133"
+                          : "#ef444433",
+                    }}
+                  >
+                    {(batteryData?.power ?? 0) >= 0
+                      ? "CHARGING"
+                      : "DISCHARGING"}
+                  </div>
                 </div>
                 <BatteryEnhanced
                   soc={batteryData?.soc ?? 0}

@@ -41,12 +41,11 @@ export function BatteryEnhanced({
     datasets: [
       {
         data: isAboveBuffer
-          ? [remainder, buffer, availablePct - buffer] 
-          : [remainder, availablePct],
+          ? [buffer, availablePct - buffer, remainder] 
+          : [availablePct, remainder],
         backgroundColor: isAboveBuffer
-          ? ["rgba(74,85,104,0.15)", "#ef4444", "#10b981"]
-          : ["rgba(74,85,104,0.15)", "#f97316"],
-        borderWidth: 0,
+          ? ["#ef4444", "#10b981", "rgba(74,85,104,0.15)"]
+          : ["#f97316", "rgba(74,85,104,0.15)"],
       },
     ],
   };
