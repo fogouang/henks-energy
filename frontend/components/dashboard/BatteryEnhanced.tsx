@@ -1,9 +1,7 @@
 "use client";
-
 import React from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip } from "chart.js";
-
 ChartJS.register(ArcElement, Tooltip);
 
 interface BatteryEnhancedProps {
@@ -35,21 +33,19 @@ export function BatteryEnhanced({
     totalCapacity > 0 ? (available / totalCapacity) * 100 : 0;
   const isCharging = power >= 0;
   const isAboveBuffer = availablePct > buffer;
-
-  // Segment 1: rouge si > buffer, orange si < buffer
-  const seg1Color = isAboveBuffer ? "#ef4444" : "#f97316";
-  // Segment 2: vert si > buffer, absent si < buffer
-  const seg2 = isAboveBuffer ? availablePct : 0;
-  const seg1 = 100 - seg2;
-
   const statusColor = isCharging ? "#10b981" : "#ef4444";
-  const statusLabel = isCharging ? "CHARGING" : "DISCHARGING";
+  const remainder = 100 - availablePct;
 
+  // Segments: partie colorée + partie vide (noire)
   const chartData = {
     datasets: [
       {
-        data: [seg1, seg2],
-        backgroundColor: [seg1Color, "#10b981"],
+        data: isAboveBuffer
+          ? [remainder, buffer, availablePct - buffer] 
+          : [remainder, availablePct],
+        backgroundColor: isAboveBuffer
+          ? ["rgba(74,85,104,0.15)", "#ef4444", "#10b981"]
+          : ["rgba(74,85,104,0.15)", "#f97316"],
         borderWidth: 0,
       },
     ],
@@ -64,6 +60,8 @@ export function BatteryEnhanced({
             responsive: true,
             maintainAspectRatio: false,
             cutout: "70%",
+            rotation: -90,
+            circumference: 360,
             plugins: {
               legend: { display: false },
               tooltip: { enabled: false },
@@ -87,11 +85,10 @@ export function BatteryEnhanced({
         </div>
       </div>
 
-      <div
-        className="mt-3 px-3 py-1 rounded-full text-xs font-bold"
-        style={{ color: statusColor, backgroundColor: `${statusColor}22` }}
-      >
-        {statusLabel}
+      {/* Power value instead of CHARGING/DISCHARGING label */}
+      <div className="mt-3 text-sm font-bold" style={{ color: statusColor }}>
+        {power > 0 ? "+" : ""}
+        {power.toFixed(2)} kW
       </div>
 
       <div className="mt-3 w-full space-y-1 text-xs">

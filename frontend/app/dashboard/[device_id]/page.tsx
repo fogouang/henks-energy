@@ -1186,29 +1186,6 @@ function DashboardContent() {
                   <div className="text-xs uppercase text-text-muted">
                     {t("dashboard.battery")}
                   </div>
-                  <div
-                    className="px-2 py-1 rounded-full text-xs font-medium"
-                    style={{
-                      color:
-                        (batteryData?.status ?? "idle") === "charging"
-                          ? "#10b981"
-                          : (batteryData?.status ?? "idle") === "discharging"
-                            ? "#00CED1"
-                            : "#718096",
-                      backgroundColor:
-                        (batteryData?.status ?? "idle") === "charging"
-                          ? "#10b98133"
-                          : (batteryData?.status ?? "idle") === "discharging"
-                            ? "#00CED133"
-                            : "#71809633",
-                    }}
-                  >
-                    {(batteryData?.status ?? "idle") === "charging"
-                      ? t("battery.charging")
-                      : (batteryData?.status ?? "idle") === "discharging"
-                        ? t("battery.discharging")
-                        : t("battery.idle")}
-                  </div>
                 </div>
                 <BatteryEnhanced
                   soc={batteryData?.soc ?? 0}
@@ -1217,9 +1194,9 @@ function DashboardContent() {
                   status={batteryData?.status ?? "idle"}
                   eveningReserve={batteryData?.eveningReserve ?? 30}
                   minimumReserve={batteryData?.minimumReserve ?? 20}
-                  availableCapacity={batteryData?.availableCapacity}
-                  batteryCapacity={batteryData?.batteryCapacity}
-                  batteryBuffer={batteryData?.batteryBuffer}
+                  availableCapacity={batteryData?.availableCapacity ?? null}
+                  batteryCapacity={batteryData?.batteryCapacity ?? null}
+                  batteryBuffer={batteryData?.batteryBuffer ?? null}
                 />
               </div>
               {!batteryData && (
