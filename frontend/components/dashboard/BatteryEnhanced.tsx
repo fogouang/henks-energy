@@ -9,6 +9,9 @@ interface BatteryEnhancedProps {
   soc: number;
   capacity: number;
   power: number;
+  status?: "charging" | "discharging" | "idle";     // ← On la rend optionnelle
+  eveningReserve?: number;
+  minimumReserve?: number;
   availableCapacity?: number | null;
   batteryCapacity?: number | null;
   batteryBuffer?: number | null;
@@ -22,33 +25,30 @@ export function BatteryEnhanced({
   batteryBuffer = 20,
   soc,
   capacity,
+  status,                    // ← On la garde mais on ne l’utilise pas forcément
   className,
 }: BatteryEnhancedProps) {
   const available = availableCapacity ?? capacity ?? 0;
   const totalCapacity = batteryCapacity ?? capacity ?? 1;
   const buffer = Math.max(0, batteryBuffer ?? 20);
 
-  const availablePct =
-    totalCapacity > 0
-      ? Math.min(Math.max((available / totalCapacity) * 100, 0), 100)
-      : 0;
+  const availablePct = totalCapacity > 0 
+    ? Math.min(Math.max((available / totalCapacity) * 100, 0), 100) 
+    : 0;
 
-  const isCharging = power >= 0;
+  // On peut utiliser `status` en priorité, sinon on déduit du power
+  const isCharging = status === "charging" || (status === undefined && power >= 0);
   const statusColor = isCharging ? "#10b981" : "#ef4444";
 
-  // Détermination de la couleur du buffer
-  const bufferColor = availablePct < 20 ? "#f97316" : "#ef4444"; // orange si < 20%, sinon rouge
+  const bufferColor = availablePct < 20 ? "#f97316" : "#ef4444";
 
-  // On crée 3 segments pour avoir une transition propre à 20%
-  const data =
-    availablePct <= buffer
-      ? [availablePct, 100 - availablePct]
-      : [buffer, availablePct - buffer, 100 - availablePct];
+  const data = availablePct <= buffer 
+    ? [availablePct, 100 - availablePct] 
+    : [buffer, availablePct - buffer, 100 - availablePct];
 
-  const backgroundColor =
-    availablePct <= buffer
-      ? [bufferColor, "rgba(74,85,104,0.15)"]
-      : [bufferColor, "#10b981", "rgba(74,85,104,0.15)"];
+  const backgroundColor = availablePct <= buffer 
+    ? [bufferColor, "rgba(74,85,104,0.15)"] 
+    : [bufferColor, "#10b981", "rgba(74,85,104,0.15)"];
 
   const chartData = {
     datasets: [
@@ -56,7 +56,6 @@ export function BatteryEnhanced({
         data: data,
         backgroundColor: backgroundColor,
         borderWidth: 0,
-        cutout: "70%",
       },
     ],
   };
@@ -69,8 +68,8 @@ export function BatteryEnhanced({
           options={{
             responsive: true,
             maintainAspectRatio: false,
-            rotation: -90, // Commence en haut (12h)
-            circumference: 360, // Sens horaire complet
+            rotation: -90,
+            circumference: 360,
             cutout: "70%",
             plugins: {
               legend: { display: false },
@@ -79,7 +78,6 @@ export function BatteryEnhanced({
           }}
         />
 
-        {/* Contenu centré */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-4xl font-bold text-white">
             {availablePct.toFixed(0)}%
@@ -97,13 +95,14 @@ export function BatteryEnhanced({
         </div>
       </div>
 
-      {/* Puissance en dessous du cercle */}
-      <div className="mt-4 text-lg font-bold" style={{ color: statusColor }}>
+      <div 
+        className="mt-4 text-lg font-bold" 
+        style={{ color: statusColor }}
+      >
         {power > 0 ? "+" : ""}
         {power.toFixed(2)} kW
       </div>
 
-      {/* Informations en bas */}
       <div className="mt-6 w-full max-w-[180px] space-y-1 text-sm">
         <div className="flex justify-between">
           <span className="text-gray-400">Available</span>
