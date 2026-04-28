@@ -2,15 +2,13 @@
 import React from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip } from "chart.js";
+
 ChartJS.register(ArcElement, Tooltip);
 
 interface BatteryEnhancedProps {
   soc: number;
   capacity: number;
   power: number;
-  status: "charging" | "discharging" | "idle";
-  eveningReserve: number;
-  minimumReserve: number;
   availableCapacity?: number | null;
   batteryCapacity?: number | null;
   batteryBuffer?: number | null;
@@ -26,56 +24,71 @@ export function BatteryEnhanced({
   capacity,
   className,
 }: BatteryEnhancedProps) {
-  const available = availableCapacity ?? 0;
+  const available = availableCapacity ?? capacity ?? 0;
   const totalCapacity = batteryCapacity ?? capacity ?? 1;
-  const buffer = batteryBuffer ?? 20;
-  const availablePct =
-    totalCapacity > 0 ? (available / totalCapacity) * 100 : 0;
-  const isCharging = power >= 0;
-  const isAboveBuffer = availablePct > buffer;
-  const statusColor = isCharging ? "#10b981" : "#ef4444";
-  const remainder = 100 - availablePct;
+  const buffer = Math.max(0, batteryBuffer ?? 20);
 
-  // Segments: partie colorée + partie vide (noire)
+  const availablePct =
+    totalCapacity > 0
+      ? Math.min(Math.max((available / totalCapacity) * 100, 0), 100)
+      : 0;
+
+  const isCharging = power >= 0;
+  const statusColor = isCharging ? "#10b981" : "#ef4444";
+
+  // Détermination de la couleur du buffer
+  const bufferColor = availablePct < 20 ? "#f97316" : "#ef4444"; // orange si < 20%, sinon rouge
+
+  // On crée 3 segments pour avoir une transition propre à 20%
+  const data =
+    availablePct <= buffer
+      ? [availablePct, 100 - availablePct]
+      : [buffer, availablePct - buffer, 100 - availablePct];
+
+  const backgroundColor =
+    availablePct <= buffer
+      ? [bufferColor, "rgba(74,85,104,0.15)"]
+      : [bufferColor, "#10b981", "rgba(74,85,104,0.15)"];
+
   const chartData = {
     datasets: [
       {
-        data: isAboveBuffer
-          ? [buffer, availablePct - buffer, remainder] 
-          : [availablePct, remainder],
-        backgroundColor: isAboveBuffer
-          ? ["#ef4444", "#10b981", "rgba(74,85,104,0.15)"]
-          : ["#f97316", "rgba(74,85,104,0.15)"],
+        data: data,
+        backgroundColor: backgroundColor,
+        borderWidth: 0,
+        cutout: "70%",
       },
     ],
   };
 
   return (
-    <div className={`flex flex-col items-center h-full ${className}`}>
-      <div className="relative w-[180px] h-[180px]">
+    <div className={`flex flex-col items-center h-full ${className || ""}`}>
+      <div className="relative w-[200px] h-[200px]">
         <Doughnut
           data={chartData}
           options={{
             responsive: true,
             maintainAspectRatio: false,
+            rotation: -90, // Commence en haut (12h)
+            circumference: 360, // Sens horaire complet
             cutout: "70%",
-            rotation: -90,
-            circumference: 360,
             plugins: {
               legend: { display: false },
               tooltip: { enabled: false },
             },
           }}
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold text-text">
+
+        {/* Contenu centré */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-4xl font-bold text-white">
             {availablePct.toFixed(0)}%
           </span>
-          <span className="text-xs text-text-muted">
+          <span className="text-sm text-gray-400 mt-1">
             {available.toFixed(1)} kWh
           </span>
           <span
-            className="text-xs font-semibold mt-1"
+            className="text-base font-semibold mt-2"
             style={{ color: statusColor }}
           >
             {power > 0 ? "+" : ""}
@@ -84,26 +97,27 @@ export function BatteryEnhanced({
         </div>
       </div>
 
-      {/* Power value instead of CHARGING/DISCHARGING label */}
-      <div className="mt-3 text-sm font-bold" style={{ color: statusColor }}>
+      {/* Puissance en dessous du cercle */}
+      <div className="mt-4 text-lg font-bold" style={{ color: statusColor }}>
         {power > 0 ? "+" : ""}
         {power.toFixed(2)} kW
       </div>
 
-      <div className="mt-3 w-full space-y-1 text-xs">
+      {/* Informations en bas */}
+      <div className="mt-6 w-full max-w-[180px] space-y-1 text-sm">
         <div className="flex justify-between">
-          <span className="text-text-muted">Available</span>
-          <span className="font-semibold text-text">
+          <span className="text-gray-400">Available</span>
+          <span className="font-semibold text-white">
             {availablePct.toFixed(1)}%
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-text-muted">Buffer</span>
-          <span className="font-semibold text-text">{buffer}%</span>
+          <span className="text-gray-400">Buffer</span>
+          <span className="font-semibold text-white">{buffer}%</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-text-muted">Capacity</span>
-          <span className="font-semibold text-text">
+          <span className="text-gray-400">Capacity</span>
+          <span className="font-semibold text-white">
             {totalCapacity.toFixed(1)} kWh
           </span>
         </div>
