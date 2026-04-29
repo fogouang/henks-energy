@@ -100,13 +100,16 @@ function DashboardContent() {
   // EV Chargers state - initialized as empty array until data is loaded
   const [evChargers, setEvChargers] = useState<
     Array<{
-      chargerNumber: number;
-      isActive: boolean;
-      batteryEnergy: number;
-      gridEnergy: number;
-      tariff: number;
-      revenue: number;
-      currentPower: number;
+      charger_number: number;
+      charger_id: number;
+      charging_price: number;
+      sessions: Array<{
+        started: string;
+        minutes: number;
+        kwh: number;
+        price: number;
+        is_active: boolean;
+      }>;
     }>
   >([]);
 
@@ -303,59 +306,8 @@ function DashboardContent() {
           };
         });
       } else if (message.type === "ev_charger_update") {
-        setEvChargers((prev) => {
-          const chargerNumber = message.data.charger_number;
-          if (!chargerNumber) {
-            console.warn(
-              "[Dashboard] ev_charger_update missing charger_number",
-            );
-            return prev;
-          }
-          const existingIndex = prev.findIndex(
-            (c) => c.chargerNumber === chargerNumber,
-          );
-          if (existingIndex >= 0) {
-            // Update existing charger
-            return prev.map((charger) =>
-              charger.chargerNumber === chargerNumber
-                ? {
-                    ...charger,
-                    isActive: (message.data.power_kw ?? 0) > 0,
-                    currentPower: message.data.power_kw ?? charger.currentPower,
-                    batteryEnergy:
-                      message.data.source === "battery"
-                        ? (message.data.energy_kwh ?? charger.batteryEnergy)
-                        : charger.batteryEnergy,
-                    gridEnergy:
-                      message.data.source === "grid"
-                        ? (message.data.energy_kwh ?? charger.gridEnergy)
-                        : charger.gridEnergy,
-                    revenue: message.data.revenue_eur ?? charger.revenue,
-                  }
-                : charger,
-            );
-          } else {
-            // Add new charger if not found
-            return [
-              ...prev,
-              {
-                chargerNumber: chargerNumber,
-                isActive: (message.data.power_kw ?? 0) > 0,
-                currentPower: message.data.power_kw ?? 0,
-                batteryEnergy:
-                  message.data.source === "battery"
-                    ? (message.data.energy_kwh ?? 0)
-                    : 0,
-                gridEnergy:
-                  message.data.source === "grid"
-                    ? (message.data.energy_kwh ?? 0)
-                    : 0,
-                tariff: 0.35,
-                revenue: message.data.revenue_eur ?? 0,
-              },
-            ];
-          }
-        });
+        // Sessions are loaded via API, WebSocket just triggers a refresh
+        // For now we ignore real-time EV updates — sessions will refresh on next load
       }
     } catch (error) {
       console.error(
@@ -520,73 +472,15 @@ function DashboardContent() {
               });
             }
 
-            // Update EV chargers
-            if (data.ev_chargers) {
-              const chargerMeasurements =
-                data.latest_measurements?.ev_chargers || [];
-              const chargerConfigs = data.ev_chargers;
-              const batterySoC =
-                data.latest_measurements?.battery?.soc_percentage || 50;
-
-              const updatedChargers = chargerConfigs.map(
-                (chargerConfig: any) => {
-                  const measurement = chargerMeasurements.find(
-                    (m: any) => m.charger_id === chargerConfig.id,
-                  );
-
-                  // Calculate energy split based on session or estimates
-                  // If we have session data, use it; otherwise estimate from total revenue
-                  const sessionEnergy = chargerConfig.session_energy_kwh || 0;
-                  const totalRevenue = chargerConfig.total_revenue_eur || 0;
-                  const tariff = chargerConfig.tariff_per_kwh || 0.35;
-
-                  // Estimate total energy from revenue if no session
-                  const totalEnergy =
-                    sessionEnergy > 0 ? sessionEnergy : totalRevenue / tariff;
-
-                  // Split energy: if battery SOC > 50%, assume 60% from battery, else 30%
-                  const batteryRatio = batterySoC > 50 ? 0.6 : 0.3;
-                  const batteryEnergy = totalEnergy * batteryRatio;
-                  const gridEnergy = totalEnergy * (1 - batteryRatio);
-
-                  if (measurement) {
-                    return {
-                      chargerNumber: chargerConfig.charger_number,
-                      isActive:
-                        measurement.power_kw > 0 ||
-                        chargerConfig.session_active,
-                      batteryEnergy:
-                        batteryEnergy > 0
-                          ? batteryEnergy
-                          : measurement.source === "battery"
-                            ? measurement.energy_kwh
-                            : 0,
-                      gridEnergy:
-                        gridEnergy > 0
-                          ? gridEnergy
-                          : measurement.source === "grid"
-                            ? measurement.energy_kwh
-                            : 0,
-                      tariff: tariff,
-                      revenue:
-                        totalRevenue > 0
-                          ? totalRevenue
-                          : measurement.revenue_eur,
-                      currentPower: measurement.power_kw,
-                    };
-                  }
-                  return {
-                    chargerNumber: chargerConfig.charger_number,
-                    isActive: chargerConfig.session_active || false,
-                    batteryEnergy: batteryEnergy,
-                    gridEnergy: gridEnergy,
-                    tariff: tariff,
-                    revenue: totalRevenue,
-                    currentPower: 0,
-                  };
-                },
+            // Load EV charger sessions
+            try {
+              const sessionsData = await installationsApi.getEVChargerSessions(
+                foundInstallationId,
+                token,
               );
-              setEvChargers(updatedChargers);
+              setEvChargers(sessionsData.chargers);
+            } catch (err) {
+              console.error("Failed to load EV charger sessions:", err);
             }
 
             // Calculate Financial KPIs from live data

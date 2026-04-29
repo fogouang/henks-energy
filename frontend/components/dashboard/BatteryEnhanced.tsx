@@ -45,7 +45,9 @@ export function BatteryEnhanced({
         backgroundColor: isAboveBuffer
           ? ["#ef4444", "#10b981", "rgba(74,85,104,0.15)"]
           : ["#f97316", "rgba(74,85,104,0.15)"],
-        borderWidth: 0,
+        borderWidth: 1,
+        borderColor: "#1a1f2e",
+        hoverBorderWidth: 0,
       },
     ],
   };
@@ -59,8 +61,9 @@ export function BatteryEnhanced({
             responsive: true,
             maintainAspectRatio: false,
             cutout: "70%",
-            rotation: -90,
+            rotation: 0,
             circumference: 360,
+            animation: false,
             plugins: {
               legend: { display: false },
               tooltip: { enabled: false },

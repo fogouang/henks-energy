@@ -1191,3 +1191,101 @@ async def create_ev_charger_measurement(
         data=measurements,
     )
 
+@router.get("/{installation_id}/ev-charger-sessions")
+async def get_ev_charger_sessions(
+    installation_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get EV charger sessions (current + history) for all chargers."""
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get CHARGINGPRICE from installation_configs
+    from backend.models.config import InstallationConfig
+    config_result = await db.execute(
+        select(InstallationConfig).where(
+            InstallationConfig.installation_id == installation_id,
+            InstallationConfig.config_key == "CHARGINGPRICE",
+        )
+    )
+    config = config_result.scalar_one_or_none()
+    charging_price = float(config.config_value) if config else 0.35
+
+    # Get all chargers
+    chargers_result = await db.execute(
+        select(EVCharger).where(
+            EVCharger.installation_id == installation_id,
+            EVCharger.deleted_at.is_(None),
+        ).order_by(EVCharger.charger_number)
+    )
+    chargers = chargers_result.scalars().all()
+
+    result = []
+    for charger in chargers:
+        # Get all measurements ordered by timestamp
+        meas_result = await db.execute(
+            select(EVChargerMeasurement)
+            .where(EVChargerMeasurement.charger_id == charger.id)
+            .order_by(EVChargerMeasurement.timestamp)
+        )
+        measurements = meas_result.scalars().all()
+
+        sessions = []
+        current_session = None
+
+        for i, m in enumerate(measurements):
+            if m.power_kw > 0:
+                if current_session is None:
+                    # Session starts
+                    current_session = {
+                        "start": m.timestamp,
+                        "start_kwh": m.energy_kwh,
+                        "end": None,
+                        "end_kwh": None,
+                        "is_active": True,
+                    }
+                else:
+                    # Session ongoing
+                    current_session["end"] = m.timestamp
+                    current_session["end_kwh"] = m.energy_kwh
+            else:
+                if current_session is not None:
+                    # Session ends
+                    current_session["end"] = m.timestamp
+                    current_session["end_kwh"] = m.energy_kwh
+                    current_session["is_active"] = False
+                    
+                    kwh = (current_session["end_kwh"] or 0) - (current_session["start_kwh"] or 0)
+                    minutes = int((current_session["end"] - current_session["start"]).total_seconds() / 60)
+                    
+                    sessions.append({
+                        "started": current_session["start"].isoformat(),
+                        "minutes": minutes,
+                        "kwh": round(kwh, 2),
+                        "price": round(kwh * charging_price, 2),
+                        "is_active": False,
+                    })
+                    current_session = None
+
+        # Add current active session if exists
+        if current_session is not None:
+            kwh = (current_session.get("end_kwh") or 0) - (current_session["start_kwh"] or 0)
+            minutes = int((measurements[-1].timestamp - current_session["start"]).total_seconds() / 60)
+            sessions.append({
+                "started": current_session["start"].isoformat(),
+                "minutes": minutes,
+                "kwh": round(kwh, 2),
+                "price": round(kwh * charging_price, 2),
+                "is_active": True,
+            })
+
+        result.append({
+            "charger_number": charger.charger_number,
+            "charger_id": charger.id,
+            "charging_price": charging_price,
+            "sessions": list(reversed(sessions)),  # most recent first
+        })
+
+    return {"chargers": result, "total": len(result)}

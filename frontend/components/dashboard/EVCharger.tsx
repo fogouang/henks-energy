@@ -1,111 +1,110 @@
-'use client';
+"use client";
 
-/**
- * EV Charger Component
- * Displays charging point status, energy from battery/grid, and revenue
- */
+import React from "react";
 
-import React from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+interface Session {
+  started: string;
+  minutes: number;
+  kwh: number;
+  price: number;
+  is_active: boolean;
+}
 
 interface EVChargerProps {
   chargerNumber: number;
-  isActive: boolean;
-  batteryEnergy: number; // kWh from battery
-  gridEnergy: number; // kWh from grid
-  tariff: number; // €/kWh
-  revenue: number; // €
-  currentPower?: number; // kW
+  chargingPrice: number;
+  sessions: Session[];
   className?: string;
 }
 
 export function EVCharger({
   chargerNumber,
-  isActive,
-  batteryEnergy,
-  gridEnergy,
-  tariff,
-  revenue,
-  currentPower,
+  chargingPrice,
+  sessions,
   className,
 }: EVChargerProps) {
-  const { t } = useLanguage();
-  const totalEnergy = batteryEnergy + gridEnergy;
-  const batteryPercentage = totalEnergy > 0 ? (batteryEnergy / totalEnergy) * 100 : 0;
-  const gridPercentage = totalEnergy > 0 ? (gridEnergy / totalEnergy) * 100 : 0;
+  const activeSession = sessions.find((s) => s.is_active);
+  const pastSessions = sessions.filter((s) => !s.is_active);
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleString("nl-NL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
   return (
-    <div className={`card p-4 ${className}`}>
+    <div className={`card p-4 flex flex-col ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-base font-semibold text-text">
-          {t('evCharger.charger')} {chargerNumber}
+        <h4 className="text-sm font-semibold text-text">
+          Station {chargerNumber}
         </h4>
-        <span
-          className={`px-2 py-1 rounded text-xs ${
-            isActive ? 'bg-success text-text' : 'bg-inactive text-text'
-          }`}
-        >
-          {isActive ? t('evCharger.active') : t('evCharger.idle')}
+        <span className="text-xs text-text-muted">
+          €{chargingPrice.toFixed(3)}/kWh
         </span>
       </div>
 
-      {currentPower !== undefined && (
-        <div className="mb-3">
-          <div className="text-xs mb-1 text-text-muted">{t('evCharger.currentPower')}</div>
-          <div className="text-lg font-bold text-text">
-            {currentPower.toFixed(2)} kW
+      {/* Sessions list */}
+      <div className="overflow-y-auto max-h-[250px] space-y-1">
+        {/* Header */}
+        <div className="grid grid-cols-5 text-xs text-text-muted pb-1 border-b border-border">
+          <span className="col-span-2">started</span>
+          <span>min</span>
+          <span>kWh</span>
+          <span>price</span>
+        </div>
+
+        {/* Active session */}
+        {activeSession && (
+          <div className="grid grid-cols-5 text-xs items-center py-1">
+            <div
+              className="w-3 h-3 rounded-sm bg-green-500 mr-1 col-span-1 flex-shrink-0"
+              style={{
+                width: 12,
+                height: 12,
+                backgroundColor: "#22c55e",
+                borderRadius: 2,
+              }}
+            />
+            <span className="text-text col-span-1">
+              {formatDate(activeSession.started)}
+            </span>
+            <span className="text-text">{activeSession.minutes}</span>
+            <span className="text-text">{activeSession.kwh.toFixed(1)}</span>
+            <span className="text-text">{activeSession.price.toFixed(2)}</span>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Energy Sources */}
-      <div className="mb-3">
-        <div className="text-xs mb-2 text-text-muted">{t('evCharger.energySources')}</div>
-        <div className="flex gap-1 h-4 rounded overflow-hidden">
-          {batteryPercentage > 0 && (
+        {/* Past sessions */}
+        {pastSessions.map((s, i) => (
+          <div key={i} className="grid grid-cols-5 text-xs items-center py-1">
             <div
-              className="h-full"
               style={{
-                width: `${batteryPercentage}%`,
-                backgroundColor: '#8b5cf6',
+                width: 12,
+                height: 12,
+                backgroundColor: "#ef4444",
+                borderRadius: 2,
+                flexShrink: 0,
               }}
-              title={`${batteryEnergy.toFixed(2)} kWh from battery`}
             />
-          )}
-          {gridPercentage > 0 && (
-            <div
-              className="h-full"
-              style={{
-                width: `${gridPercentage}%`,
-                backgroundColor: '#06b6d4',
-              }}
-              title={`${gridEnergy.toFixed(2)} kWh from grid`}
-            />
-          )}
-        </div>
-        <div className="flex justify-between text-xs mt-1 text-text-muted">
-          <span>
-            {t('evCharger.battery')}: {batteryEnergy.toFixed(2)} kWh
-          </span>
-          <span>
-            {t('evCharger.grid')}: {gridEnergy.toFixed(2)} kWh
-          </span>
-        </div>
-      </div>
+            <span className="text-text">{formatDate(s.started)}</span>
+            <span className="text-text">{s.minutes}</span>
+            <span className="text-text">{s.kwh.toFixed(1)}</span>
+            <span className="text-text">{s.price.toFixed(2)}</span>
+          </div>
+        ))}
 
-      {/* Revenue */}
-      <div className="pt-3 border-t border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-text-muted">{t('evCharger.revenue')}</span>
-          <span className="text-base font-bold text-success">
-            €{revenue.toFixed(2)}
-          </span>
-        </div>
-        <div className="text-xs mt-1 text-text-muted">
-          {t('evCharger.tariff')}: €{tariff.toFixed(3)}/kWh
-        </div>
+        {sessions.length === 0 && (
+          <div className="text-xs text-text-muted text-center py-4">
+            No sessions
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
