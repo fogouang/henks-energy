@@ -287,18 +287,15 @@ export const installationsApi = {
 
   async getEVChargerSessions(id: number, token: string) {
     return apiFetch<{
-      chargers: Array<{
-        charger_number: number;
-        charger_id: number;
-        charging_price: number;
-        sessions: Array<{
-          started: string;
-          minutes: number;
-          kwh: number;
-          price: number;
-          is_active: boolean;
-        }>;
+      sessions: Array<{
+        station: number;
+        started: string;
+        minutes: number;
+        kwh: number;
+        price: number;
+        is_active: boolean;
       }>;
+      charging_price: number;
       total: number;
     }>(`/api/installations/${id}/ev-charger-sessions`, {
       headers: {

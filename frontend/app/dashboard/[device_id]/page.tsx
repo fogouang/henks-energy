@@ -98,20 +98,17 @@ function DashboardContent() {
   } | null>(null);
 
   // EV Chargers state - initialized as empty array until data is loaded
-  const [evChargers, setEvChargers] = useState<
-    Array<{
-      charger_number: number;
-      charger_id: number;
-      charging_price: number;
-      sessions: Array<{
-        started: string;
-        minutes: number;
-        kwh: number;
-        price: number;
-        is_active: boolean;
-      }>;
-    }>
-  >([]);
+  const [evChargers, setEvChargers] = useState<{
+    sessions: Array<{
+      station: number;
+      started: string;
+      minutes: number;
+      kwh: number;
+      price: number;
+      is_active: boolean;
+    }>;
+    charging_price: number;
+  } | null>(null);
 
   // Financial KPIs - initialized with default values (can be calculated from data)
   const [financialKPIs, setFinancialKPIs] = useState({
@@ -478,7 +475,7 @@ function DashboardContent() {
                 foundInstallationId,
                 token,
               );
-              setEvChargers(sessionsData.chargers);
+              setEvChargers(sessionsData);
             } catch (err) {
               console.error("Failed to load EV charger sessions:", err);
             }
@@ -1120,7 +1117,10 @@ function DashboardContent() {
               )}
             </div>
             <div className="md:col-span-6">
-              <EVChargersGrid chargers={evChargers} />
+              <EVChargersGrid
+                sessions={evChargers?.sessions ?? []}
+                chargingPrice={evChargers?.charging_price ?? 0.35}
+              />
             </div>
           </div>
 
