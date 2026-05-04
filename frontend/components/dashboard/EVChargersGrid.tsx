@@ -50,7 +50,7 @@ export function EVChargersGrid({ sessions, chargingPrice, className }: EVCharger
 
         {/* Sessions */}
         {sessions.length === 0 ? (
-         <div className="overflow-y-auto" style={{ maxHeight: '200px' }}>No sessions</div>
+         <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>No sessions</div>
         ) : (
           sessions.slice(0,50).map((s, i) => (
             <div key={i} className="grid grid-cols-6 text-xs items-center py-1 border-b border-border/30">
