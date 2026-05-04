@@ -1,7 +1,5 @@
 'use client';
-
 import React from 'react';
-
 interface Session {
   station: number;
   started: string;
@@ -10,16 +8,13 @@ interface Session {
   price: number;
   is_active: boolean;
 }
-
 interface EVChargersGridProps {
   sessions: Session[];
   chargingPrice: number;
   className?: string;
 }
-
 export function EVChargersGrid({ sessions, chargingPrice, className }: EVChargersGridProps) {
   const totalRevenue = sessions.reduce((sum, s) => sum + s.price, 0);
-
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleString('nl-NL', {
@@ -27,9 +22,8 @@ export function EVChargersGrid({ sessions, chargingPrice, className }: EVCharger
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
   };
-
   return (
-    <div className={`card p-4 h-full flex flex-col ${className}`}>
+    <div className={`card p-4 flex flex-col ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-text">EV Charger</h3>
         <div className="flex items-center gap-4 text-xs text-text-muted">
@@ -37,22 +31,18 @@ export function EVChargersGrid({ sessions, chargingPrice, className }: EVCharger
           <span className="font-bold text-green-400">Total: €{totalRevenue.toFixed(2)}</span>
         </div>
       </div>
-
-      <div className="overflow-y-auto flex-1">
-        {/* Header */}
-        <div className="grid grid-cols-6 text-xs text-text-muted pb-1 border-b border-border">
-          <span></span>
-          <span className="col-span-2">started</span>
-          <span>min</span>
-          <span>kWh</span>
-          <span>price</span>
-        </div>
-
-        {/* Sessions */}
+      <div className="grid grid-cols-6 text-xs text-text-muted pb-1 border-b border-border">
+        <span></span>
+        <span className="col-span-2">started</span>
+        <span>min</span>
+        <span>kWh</span>
+        <span>price</span>
+      </div>
+      <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>
         {sessions.length === 0 ? (
-         <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>No sessions</div>
+          <div className="text-xs text-text-muted text-center py-4">No sessions</div>
         ) : (
-          sessions.slice(0,50).map((s, i) => (
+          sessions.map((s, i) => (
             <div key={i} className="grid grid-cols-6 text-xs items-center py-1 border-b border-border/30">
               <div className="flex items-center gap-1">
                 <div style={{
