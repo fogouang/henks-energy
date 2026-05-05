@@ -1,10 +1,6 @@
 FROM node:20-alpine
 WORKDIR /app
-
 RUN npm install -g pnpm
-
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
 
 COPY frontend/ .
 
@@ -13,6 +9,8 @@ COPY docs/JSEnergy_Edge_Device_API.postman_collection.json \
     docs/JSEnergy_Edge_Device_API_Local.postman_environment.json \
     docs/JSEnergy_Edge_Device_API_Production.postman_environment.json \
     public/downloads/
+
+RUN pnpm install --frozen-lockfile
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
