@@ -14,8 +14,8 @@ RUN pnpm install --frozen-lockfile
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY frontend/ .
+COPY --from=deps /app/node_modules ./node_modules
 # Copy Postman collection and environments from docs/ into public/downloads/
 RUN mkdir -p public/downloads
 COPY docs/JSEnergy_Edge_Device_API.postman_collection.json \
