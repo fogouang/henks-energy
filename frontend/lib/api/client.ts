@@ -322,19 +322,35 @@ export const installationsApi = {
   },
 
   async getBatteryUsable(id: number, period: string, token: string) {
-  return apiFetch<{
-    period: string;
-    data: Array<{
+    return apiFetch<{
       period: string;
-      usable_kwh: number;
-      available_kwh: number | null;
-      soc_percentage: number;
-    }>;
-    total: number;
-  }>(`/api/installations/${id}/battery-usable?period=${period}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-},
+      data: Array<{
+        period: string;
+        usable_kwh: number;
+        available_kwh: number | null;
+        soc_percentage: number;
+      }>;
+      total: number;
+    }>(`/api/installations/${id}/battery-usable?period=${period}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async getGridEnergy(id: number, period: string, token: string) {
+    return apiFetch<{
+      period: string;
+      data: Array<{
+        period: string;
+        import_kw: number;
+        export_kw: number;
+        net_kw: number;
+        price: number | null;
+      }>;
+      total: number;
+    }>(`/api/installations/${id}/grid-energy?period=${period}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
 };
 
 /**

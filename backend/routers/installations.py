@@ -1390,3 +1390,74 @@ async def get_battery_usable(
         "data": data,
         "total": len(data),
     }
+    
+
+@router.get("/{installation_id}/grid-energy")
+async def get_grid_energy(
+    installation_id: int,
+    period: str = Query("day", regex="^(day|week|month)$"),
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    """Get grid energy flow (import - export) per hour/day."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import text
+    from backend.models.epex import EPEXSpotPrice
+
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start = now - timedelta(days=1)
+        trunc_unit = 'hour'
+    elif period == "week":
+        start = now - timedelta(weeks=1)
+        trunc_unit = 'day'
+    else:
+        start = now - timedelta(days=30)
+        trunc_unit = 'day'
+
+    result = await db.execute(
+        text(f"""
+            SELECT 
+                date_trunc('{trunc_unit}', timestamp) as period,
+                AVG(import_kw) as avg_import,
+                AVG(export_kw) as avg_export,
+                AVG(import_kw - export_kw) as avg_net
+            FROM meter_measurements
+            WHERE installation_id = :installation_id
+            AND timestamp >= :start
+            GROUP BY date_trunc('{trunc_unit}', timestamp)
+            ORDER BY date_trunc('{trunc_unit}', timestamp)
+        """),
+        {"installation_id": installation_id, "start": start}
+    )
+    rows = result.all()
+
+    # Get EPEX prices
+    epex_result = await db.execute(
+        select(EPEXSpotPrice)
+        .where(EPEXSpotPrice.date_hour >= start)
+        .order_by(EPEXSpotPrice.date_hour)
+    )
+    epex_prices = {p.date_hour: p.price for p in epex_result.scalars().all()}
+
+    data = []
+    for row in rows:
+        period_ts, avg_import, avg_export, avg_net = row
+        hour_price = epex_prices.get(period_ts)
+        data.append({
+            "period": period_ts.isoformat(),
+            "import_kw": round(avg_import, 2),
+            "export_kw": round(avg_export, 2),
+            "net_kw": round(avg_net, 2),
+            "price": round(hour_price, 4) if hour_price else None,
+        })
+
+    return {
+        "period": period,
+        "data": data,
+        "total": len(data),
+    }
