@@ -1286,17 +1286,19 @@ async def get_solar_energy(
     # Get inverter measurements grouped by hour
     from sqlalchemy import text
 
+    trunc_unit = 'hour' if period == 'day' else 'day'
+
     result = await db.execute(
-        text("""
+        text(f"""
             SELECT 
-                date_trunc('hour', timestamp) as hour,
+                date_trunc('{trunc_unit}', timestamp) as hour,
                 AVG(power_kw) as avg_kw,
                 COUNT(*) as readings
             FROM inverter_measurements
             WHERE installation_id = :installation_id
             AND timestamp >= :start
-            GROUP BY date_trunc('hour', timestamp)
-            ORDER BY date_trunc('hour', timestamp)
+            GROUP BY date_trunc('{trunc_unit}', timestamp)
+            ORDER BY date_trunc('{trunc_unit}', timestamp)
         """),
         {"installation_id": installation_id, "start": start}
     )
@@ -1314,7 +1316,8 @@ async def get_solar_energy(
     data = []
     for row in rows:
         hour, avg_kw, readings = row
-        kwh = round(avg_kw * 1, 2)
+        multiplier = 1 if period == 'day' else 24
+        kwh = round(avg_kw * multiplier, 2)
         hour_price = epex_prices.get(hour)
         eur = round(kwh * hour_price, 3) if hour_price else 0
         data.append({
