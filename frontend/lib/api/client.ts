@@ -320,6 +320,21 @@ export const installationsApi = {
       },
     });
   },
+
+  async getBatteryUsable(id: number, period: string, token: string) {
+  return apiFetch<{
+    period: string;
+    data: Array<{
+      period: string;
+      usable_kwh: number;
+      available_kwh: number | null;
+      soc_percentage: number;
+    }>;
+    total: number;
+  }>(`/api/installations/${id}/battery-usable?period=${period}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+},
 };
 
 /**

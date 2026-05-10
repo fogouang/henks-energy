@@ -34,6 +34,7 @@ class BatteryMeasurement(Base):
     voltage: Mapped[float | None] = mapped_column(Float, nullable=True)
     temperature: Mapped[float | None] = mapped_column(Float, nullable=True)
     available_capacity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    usable: Mapped[float | None] = mapped_column(Float, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

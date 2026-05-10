@@ -367,6 +367,7 @@ async def create_bulk_measurements(
                 voltage=measurement.voltage,
                 temperature=measurement.temperature,
                 available_capacity=measurement.available_capacity,
+                usable=measurement.usable,
             )
             for measurement in request.battery
         ]
@@ -733,6 +734,7 @@ async def create_battery_measurement(
             voltage=measurement.voltage,
             temperature=measurement.temperature,
             available_capacity=measurement.available_capacity,
+            usable=measurement.usable,
         )
         for measurement in measurements
     ]

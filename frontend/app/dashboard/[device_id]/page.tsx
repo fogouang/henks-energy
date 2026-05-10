@@ -33,6 +33,7 @@ import {
 } from "@/lib/api/client";
 import { WebSocketMessage } from "@/lib/api/websocket";
 import { SolarEnergyChart } from "@/components/dashboard/SolarEnergyChart";
+import { BatteryUsableChart } from "@/components/dashboard/BatteryUsableChart";
 
 function DashboardContent() {
   const { t } = useLanguage();
@@ -1209,6 +1210,14 @@ function DashboardContent() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="md:col-span-4">
+              <BatteryUsableChart
+                installationId={installationId}
+                token={token}
+                className="h-full"
+              />
             </div>
           </div>
         </div>

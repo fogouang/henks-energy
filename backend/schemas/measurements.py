@@ -49,6 +49,7 @@ class BatteryMeasurementCreate(BaseModel):
     voltage: float | None = None
     temperature: float | None = None
     available_capacity: float | None = None
+    usable: float | None = None
     timestamp: datetime
 
 

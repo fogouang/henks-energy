@@ -1328,3 +1328,65 @@ async def get_solar_energy(
         })
 
     return {"period": period, "data": data, "total_kwh": round(sum(d["kwh"] for d in data), 2), "total_eur": round(sum(d["eur"] for d in data), 2)}
+
+
+
+@router.get("/{installation_id}/battery-usable")
+async def get_battery_usable(
+    installation_id: int,
+    period: str = Query("day", regex="^(day|week|month)$"),
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    """Get battery usable capacity over time."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import text
+
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start = now - timedelta(days=1)
+        trunc_unit = 'hour'
+    elif period == "week":
+        start = now - timedelta(weeks=1)
+        trunc_unit = 'day'
+    else:
+        start = now - timedelta(days=30)
+        trunc_unit = 'day'
+
+    result = await db.execute(
+        text(f"""
+            SELECT 
+                date_trunc('{trunc_unit}', timestamp) as period,
+                AVG(usable) as avg_usable,
+                AVG(available_capacity) as avg_available,
+                AVG(soc_percentage) as avg_soc
+            FROM battery_measurements
+            WHERE installation_id = :installation_id
+            AND timestamp >= :start
+            AND usable IS NOT NULL
+            GROUP BY date_trunc('{trunc_unit}', timestamp)
+            ORDER BY date_trunc('{trunc_unit}', timestamp)
+        """),
+        {"installation_id": installation_id, "start": start}
+    )
+    rows = result.all()
+
+    data = []
+    for row in rows:
+        period_ts, avg_usable, avg_available, avg_soc = row
+        data.append({
+            "period": period_ts.isoformat(),
+            "usable_kwh": round(avg_usable, 2),
+            "available_kwh": round(avg_available, 2) if avg_available else None,
+            "soc_percentage": round(avg_soc, 1),
+        })
+
+    return {
+        "period": period,
+        "data": data,
+        "total": len(data),
+    }
