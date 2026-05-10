@@ -35,6 +35,8 @@ import { WebSocketMessage } from "@/lib/api/websocket";
 import { SolarEnergyChart } from "@/components/dashboard/SolarEnergyChart";
 import { BatteryUsableChart } from "@/components/dashboard/BatteryUsableChart";
 import { GridEnergyChart } from "@/components/dashboard/GridEnergyChart";
+import { ChargerPowerChart } from "@/components/dashboard/ChargerPowerChart";
+import { EnergyEarningsChart } from "@/components/dashboard/EnergyEarningsChart";
 
 function DashboardContent() {
   const { t } = useLanguage();
@@ -1223,6 +1225,22 @@ function DashboardContent() {
 
             <div className="md:col-span-4">
               <GridEnergyChart
+                installationId={installationId}
+                token={token}
+                className="h-full"
+              />
+            </div>
+
+            <div className="md:col-span-4">
+              <ChargerPowerChart
+                installationId={installationId}
+                token={token}
+                className="h-full"
+              />
+            </div>
+
+            <div className="md:col-span-4">
+              <EnergyEarningsChart
                 installationId={installationId}
                 token={token}
                 className="h-full"

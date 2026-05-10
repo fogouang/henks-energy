@@ -1461,3 +1461,185 @@ async def get_grid_energy(
         "data": data,
         "total": len(data),
     }
+    
+
+@router.get("/{installation_id}/charger-power")
+async def get_charger_power(
+    installation_id: int,
+    period: str = Query("day", regex="^(day|week|month)$"),
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    """Get total charger power_kw per hour/day."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import text
+    from backend.models.config import InstallationConfig
+
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Get CHARGINGPRICE
+    config_result = await db.execute(
+        select(InstallationConfig).where(
+            InstallationConfig.installation_id == installation_id,
+            InstallationConfig.config_key == "CHARGINGPRICE",
+        )
+    )
+    config = config_result.scalar_one_or_none()
+    charging_price = float(config.config_value) if config else 0.35
+
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start = now - timedelta(days=1)
+        trunc_unit = 'hour'
+    elif period == "week":
+        start = now - timedelta(weeks=1)
+        trunc_unit = 'day'
+    else:
+        start = now - timedelta(days=30)
+        trunc_unit = 'day'
+
+    result = await db.execute(
+        text(f"""
+            SELECT 
+                date_trunc('{trunc_unit}', timestamp) as period,
+                SUM(power_kw) / 6.0 as kwh
+            FROM ev_charger_measurements
+            WHERE installation_id = :installation_id
+            AND timestamp >= :start
+            GROUP BY date_trunc('{trunc_unit}', timestamp)
+            ORDER BY date_trunc('{trunc_unit}', timestamp)
+        """),
+        {"installation_id": installation_id, "start": start}
+    )
+    rows = result.all()
+
+    data = []
+    for row in rows:
+        period_ts, kwh = row
+        kwh = round(kwh, 2) if kwh else 0
+        data.append({
+            "period": period_ts.isoformat(),
+            "kwh": kwh,
+            "revenue": round(kwh * charging_price, 2),
+        })
+
+    return {
+        "period": period,
+        "data": data,
+        "charging_price": charging_price,
+        "total_kwh": round(sum(d["kwh"] for d in data), 2),
+        "total_revenue": round(sum(d["revenue"] for d in data), 2),
+    }
+    
+
+@router.get("/{installation_id}/energy-earnings")
+async def get_energy_earnings(
+    installation_id: int,
+    period: str = Query("day", regex="^(day|week|month)$"),
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    """Get energy earnings per hour - solar (orange) and grid (blue)."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import text
+    from backend.models.epex import EPEXSpotPrice
+    from backend.models.config import InstallationConfig
+
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start = now - timedelta(days=1)
+        trunc_unit = 'hour'
+    elif period == "week":
+        start = now - timedelta(weeks=1)
+        trunc_unit = 'day'
+    else:
+        start = now - timedelta(days=30)
+        trunc_unit = 'day'
+
+    # Get manual price from installation_configs
+    config_result = await db.execute(
+        select(InstallationConfig).where(
+            InstallationConfig.installation_id == installation_id,
+            InstallationConfig.config_key == "ELECTRICITY_PRICE",
+        )
+    )
+    config = config_result.scalar_one_or_none()
+    manual_price = float(config.config_value) if config else 0.25
+
+    # Get solar energy (inverter)
+    solar_result = await db.execute(
+        text(f"""
+            SELECT 
+                date_trunc('{trunc_unit}', timestamp) as period,
+                AVG(power_kw) as avg_kw
+            FROM inverter_measurements
+            WHERE installation_id = :installation_id
+            AND timestamp >= :start
+            GROUP BY date_trunc('{trunc_unit}', timestamp)
+            ORDER BY date_trunc('{trunc_unit}', timestamp)
+        """),
+        {"installation_id": installation_id, "start": start}
+    )
+    solar_rows = {row[0]: row[1] for row in solar_result.all()}
+
+    # Get grid energy (meter)
+    grid_result = await db.execute(
+        text(f"""
+            SELECT 
+                date_trunc('{trunc_unit}', timestamp) as period,
+                AVG(import_kw - export_kw) as avg_net
+            FROM meter_measurements
+            WHERE installation_id = :installation_id
+            AND timestamp >= :start
+            GROUP BY date_trunc('{trunc_unit}', timestamp)
+            ORDER BY date_trunc('{trunc_unit}', timestamp)
+        """),
+        {"installation_id": installation_id, "start": start}
+    )
+    grid_rows = {row[0]: row[1] for row in grid_result.all()}
+
+    # Get EPEX prices
+    epex_result = await db.execute(
+        select(EPEXSpotPrice)
+        .where(EPEXSpotPrice.date_hour >= start)
+        .order_by(EPEXSpotPrice.date_hour)
+    )
+    epex_prices = {p.date_hour: p.price for p in epex_result.scalars().all()}
+
+    # Combine all periods
+    all_periods = sorted(set(list(solar_rows.keys()) + list(grid_rows.keys())))
+
+    data = []
+    for period_ts in all_periods:
+        solar_kw = solar_rows.get(period_ts, 0) or 0
+        grid_net_kw = grid_rows.get(period_ts, 0) or 0
+        epex_price = epex_prices.get(period_ts)
+
+        solar_earnings = round(solar_kw * manual_price, 3)
+        grid_earnings = round(grid_net_kw * ((manual_price - epex_price) if epex_price else 0), 3)
+
+        data.append({
+            "period": period_ts.isoformat(),
+            "solar_kw": round(solar_kw, 2),
+            "solar_earnings": solar_earnings,
+            "grid_net_kw": round(grid_net_kw, 2),
+            "grid_earnings": grid_earnings,
+            "epex_price": round(epex_price, 4) if epex_price else None,
+            "manual_price": manual_price,
+            "total_earnings": round(solar_earnings + grid_earnings, 3),
+        })
+
+    return {
+        "period": period,
+        "data": data,
+        "manual_price": manual_price,
+        "total_solar_earnings": round(sum(d["solar_earnings"] for d in data), 2),
+        "total_grid_earnings": round(sum(d["grid_earnings"] for d in data), 2),
+        "total_earnings": round(sum(d["total_earnings"] for d in data), 2),
+    }

@@ -351,6 +351,40 @@ export const installationsApi = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+
+  async getChargerPower(id: number, period: string, token: string) {
+    return apiFetch<{
+      period: string;
+      data: Array<{ period: string; kwh: number; revenue: number }>;
+      charging_price: number;
+      total_kwh: number;
+      total_revenue: number;
+    }>(`/api/installations/${id}/charger-power?period=${period}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async getEnergyEarnings(id: number, period: string, token: string) {
+  return apiFetch<{
+    period: string;
+    data: Array<{
+      period: string;
+      solar_kw: number;
+      solar_earnings: number;
+      grid_net_kw: number;
+      grid_earnings: number;
+      epex_price: number | null;
+      manual_price: number;
+      total_earnings: number;
+    }>;
+    manual_price: number;
+    total_solar_earnings: number;
+    total_grid_earnings: number;
+    total_earnings: number;
+  }>(`/api/installations/${id}/energy-earnings?period=${period}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+},
 };
 
 /**
