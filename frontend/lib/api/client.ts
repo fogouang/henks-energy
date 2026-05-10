@@ -303,6 +303,23 @@ export const installationsApi = {
       },
     });
   },
+  async getSolarEnergy(id: number, period: string, token: string) {
+    return apiFetch<{
+      period: string;
+      data: Array<{
+        hour: string;
+        kwh: number;
+        eur: number;
+        price: number | null;
+      }>;
+      total_kwh: number;
+      total_eur: number;
+    }>(`/api/installations/${id}/solar-energy?period=${period}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
 };
 
 /**

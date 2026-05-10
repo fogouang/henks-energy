@@ -1257,3 +1257,71 @@ async def get_installation_weather(
     
     return weather_response
 
+
+@router.get("/{installation_id}/solar-energy")
+async def get_solar_energy(
+    installation_id: int,
+    period: str = Query("day", regex="^(day|week|month)$"),
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    """Get solar energy per hour in kWh and EUR."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import func
+    from backend.models.measurements import InverterMeasurement
+    from backend.models.epex import EPEXSpotPrice
+
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    now = datetime.now(timezone.utc)
+    if period == "day":
+        start = now - timedelta(days=1)
+    elif period == "week":
+        start = now - timedelta(weeks=1)
+    else:
+        start = now - timedelta(days=30)
+
+    # Get inverter measurements grouped by hour
+    from sqlalchemy import text
+
+    result = await db.execute(
+        text("""
+            SELECT 
+                date_trunc('hour', timestamp) as hour,
+                AVG(power_kw) as avg_kw,
+                COUNT(*) as readings
+            FROM inverter_measurements
+            WHERE installation_id = :installation_id
+            AND timestamp >= :start
+            GROUP BY date_trunc('hour', timestamp)
+            ORDER BY date_trunc('hour', timestamp)
+        """),
+        {"installation_id": installation_id, "start": start}
+    )
+    rows = result.all()
+
+    # Get EPEX prices for the period
+    epex_result = await db.execute(
+        select(EPEXSpotPrice)
+        .where(EPEXSpotPrice.date_hour >= start)
+        .order_by(EPEXSpotPrice.date_hour)
+    )
+    epex_prices = {p.date_hour: p.price for p in epex_result.scalars().all()}
+
+    # Calculate kWh per hour (each reading = 10 min, so divide by 6)
+    data = []
+    for row in rows:
+        hour, avg_kw, readings = row
+        kwh = round(avg_kw * 1, 2)
+        hour_price = epex_prices.get(hour)
+        eur = round(kwh * hour_price, 3) if hour_price else 0
+        data.append({
+            "hour": hour.isoformat(),
+            "kwh": kwh,
+            "eur": eur,
+            "price": hour_price,
+        })
+
+    return {"period": period, "data": data, "total_kwh": round(sum(d["kwh"] for d in data), 2), "total_eur": round(sum(d["eur"] for d in data), 2)}

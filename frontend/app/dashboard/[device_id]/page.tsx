@@ -32,6 +32,7 @@ import {
   ApiClientError,
 } from "@/lib/api/client";
 import { WebSocketMessage } from "@/lib/api/websocket";
+import { SolarEnergyChart } from "@/components/dashboard/SolarEnergyChart";
 
 function DashboardContent() {
   const { t } = useLanguage();
@@ -1141,24 +1142,13 @@ function DashboardContent() {
 
           {/* Row 3: Revenue Charts - 5 Cards */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
-            {/* 1. Self-Consumption Revenue */}
-            <div className="md:col-span-2">
-              <div className="card p-4 h-full">
-                <div className="text-xs uppercase mb-3 text-text-muted">
-                  {t("revenueCharts.selfConsumption")}
-                </div>
-                <div className="h-[180px]">
-                  <RevenueCharts
-                    selfConsumptionData={revenueData.selfConsumption}
-                    feedInData={[]}
-                    arbitrageData={[]}
-                    evChargingData={[]}
-                    totalPaybackData={[]}
-                    className="h-full"
-                    showOnly="selfConsumption"
-                  />
-                </div>
-              </div>
+            {/* 1. Solar Energy Chart - NEW */}
+            <div className="md:col-span-4">
+              <SolarEnergyChart
+                installationId={installationId}
+                token={token}
+                className="h-full"
+              />
             </div>
 
             {/* 2. Feed-in Revenue */}
@@ -1202,7 +1192,7 @@ function DashboardContent() {
             </div>
 
             {/* 4. EV Charging Revenue */}
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <div className="card p-4 h-full">
                 <div className="text-xs uppercase mb-3 text-text-muted">
                   {t("revenueCharts.evCharging")}
@@ -1216,26 +1206,6 @@ function DashboardContent() {
                     totalPaybackData={[]}
                     className="h-full"
                     showOnly="evCharging"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Total Payback */}
-            <div className="md:col-span-3">
-              <div className="card p-4 h-full">
-                <div className="text-xs uppercase mb-3 text-text-muted">
-                  {t("revenueCharts.totalPayback")}
-                </div>
-                <div className="h-[180px]">
-                  <RevenueCharts
-                    selfConsumptionData={[]}
-                    feedInData={[]}
-                    arbitrageData={[]}
-                    evChargingData={[]}
-                    totalPaybackData={revenueData.totalPayback}
-                    className="h-full"
-                    showOnly="totalPayback"
                   />
                 </div>
               </div>
