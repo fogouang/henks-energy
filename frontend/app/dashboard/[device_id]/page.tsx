@@ -13,7 +13,6 @@ import { MainMeter } from "@/components/dashboard/MainMeter";
 import { PhaseCurrents } from "@/components/dashboard/PhaseCurrents";
 import { Generator } from "@/components/dashboard/Generator";
 import { EVChargersGrid } from "@/components/dashboard/EVChargersGrid";
-import { RevenueCharts } from "@/components/dashboard/RevenueCharts";
 import { DateTimeWidget } from "@/components/dashboard/DateTimeWidget";
 import { EnergyFlowDiagram } from "@/components/dashboard/EnergyFlowDiagram";
 import { UserMenu } from "@/components/dashboard/UserMenu";
@@ -1113,9 +1112,8 @@ function DashboardContent() {
             </div>
           )}
 
-          {/* Row 3: Revenue Charts - 5 Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
-            {/* 1. Solar Energy Chart - NEW */}
+          {/* Bottom Charts - uniform grid */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             <div className="md:col-span-4">
               <SolarEnergyChart
                 installationId={installationId}
@@ -1123,67 +1121,6 @@ function DashboardContent() {
                 className="h-full"
               />
             </div>
-
-            {/* 2. Feed-in Revenue */}
-            <div className="md:col-span-2">
-              <div className="card p-4 h-full">
-                <div className="text-xs uppercase mb-3 text-text-muted">
-                  {t("revenueCharts.feedIn")}
-                </div>
-                <div className="h-[180px]">
-                  <RevenueCharts
-                    selfConsumptionData={[]}
-                    feedInData={revenueData.feedIn}
-                    arbitrageData={[]}
-                    evChargingData={[]}
-                    totalPaybackData={[]}
-                    className="h-full"
-                    showOnly="feedIn"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Arbitrage Revenue */}
-            <div className="md:col-span-3">
-              <div className="card p-4 h-full">
-                <div className="text-xs uppercase mb-3 text-text-muted">
-                  {t("revenueCharts.arbitrage")}
-                </div>
-                <div className="h-[180px]">
-                  <RevenueCharts
-                    selfConsumptionData={[]}
-                    feedInData={[]}
-                    arbitrageData={revenueData.arbitrage}
-                    evChargingData={[]}
-                    totalPaybackData={[]}
-                    className="h-full"
-                    showOnly="arbitrage"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 4. EV Charging Revenue */}
-            <div className="md:col-span-3">
-              <div className="card p-4 h-full">
-                <div className="text-xs uppercase mb-3 text-text-muted">
-                  {t("revenueCharts.evCharging")}
-                </div>
-                <div className="h-[180px]">
-                  <RevenueCharts
-                    selfConsumptionData={[]}
-                    feedInData={[]}
-                    arbitrageData={[]}
-                    evChargingData={revenueData.evCharging}
-                    totalPaybackData={[]}
-                    className="h-full"
-                    showOnly="evCharging"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div className="md:col-span-4">
               <BatteryUsableChart
                 installationId={installationId}
@@ -1191,7 +1128,6 @@ function DashboardContent() {
                 className="h-full"
               />
             </div>
-
             <div className="md:col-span-4">
               <GridEnergyChart
                 installationId={installationId}
@@ -1199,7 +1135,6 @@ function DashboardContent() {
                 className="h-full"
               />
             </div>
-
             <div className="md:col-span-4">
               <ChargerPowerChart
                 installationId={installationId}
@@ -1207,7 +1142,6 @@ function DashboardContent() {
                 className="h-full"
               />
             </div>
-
             <div className="md:col-span-4">
               <EnergyEarningsChart
                 installationId={installationId}
