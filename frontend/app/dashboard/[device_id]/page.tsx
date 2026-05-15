@@ -33,6 +33,7 @@ import { GridEnergyChart } from "@/components/dashboard/GridEnergyChart";
 import { ChargerPowerChart } from "@/components/dashboard/ChargerPowerChart";
 import { EnergyEarningsChart } from "@/components/dashboard/EnergyEarningsChart";
 import { LastSeenWidget } from "@/components/dashboard/LastSeenWidget";
+import { WeatherWidget } from "@/components/dashboard/WeatherWidget";
 
 function DashboardContent() {
   const { t } = useLanguage();
@@ -754,16 +755,21 @@ function DashboardContent() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
             {/* Weather Card - First position, 2 cols, spans 2 rows */}
             <div className="md:col-span-2 md:row-span-2 flex">
-              <LastSeenWidget
+              <WeatherWidget
                 installationId={installationId}
+                installation={installation}
                 token={token}
-                className="w-full"
+                className="w-full max-h-[360px]"
               />
             </div>
 
             {/* Row 1: Time, Main Meter, Phase Currents, Energy Flow */}
             <div className="md:col-span-2">
-              <DateTimeWidget installation={installation} />
+              <LastSeenWidget
+                installationId={installationId}
+                token={token}
+                className="w-full h-full"
+              />
             </div>
             <div className="md:col-span-4 flex relative">
               <MainMeter
