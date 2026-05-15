@@ -14,10 +14,7 @@ import { PhaseCurrents } from "@/components/dashboard/PhaseCurrents";
 import { Generator } from "@/components/dashboard/Generator";
 import { EVChargersGrid } from "@/components/dashboard/EVChargersGrid";
 import { RevenueCharts } from "@/components/dashboard/RevenueCharts";
-import { FinancialKPIs } from "@/components/dashboard/FinancialKPIs";
-import { OperatorControls } from "@/components/dashboard/OperatorControls";
 import { DateTimeWidget } from "@/components/dashboard/DateTimeWidget";
-import { WeatherWidget } from "@/components/dashboard/WeatherWidget";
 import { EnergyFlowDiagram } from "@/components/dashboard/EnergyFlowDiagram";
 import { UserMenu } from "@/components/dashboard/UserMenu";
 import { Logo } from "@/components/common/Logo";
@@ -28,7 +25,6 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   installationsApi,
   edgeDevicesApi,
-  measurementsApi,
   ApiClientError,
 } from "@/lib/api/client";
 import { WebSocketMessage } from "@/lib/api/websocket";
@@ -37,6 +33,7 @@ import { BatteryUsableChart } from "@/components/dashboard/BatteryUsableChart";
 import { GridEnergyChart } from "@/components/dashboard/GridEnergyChart";
 import { ChargerPowerChart } from "@/components/dashboard/ChargerPowerChart";
 import { EnergyEarningsChart } from "@/components/dashboard/EnergyEarningsChart";
+import { LastSeenWidget } from "@/components/dashboard/LastSeenWidget";
 
 function DashboardContent() {
   const { t } = useLanguage();
@@ -115,19 +112,6 @@ function DashboardContent() {
     charging_price: number;
   } | null>(null);
 
-  // Financial KPIs - initialized with default values (can be calculated from data)
-  const [financialKPIs, setFinancialKPIs] = useState({
-    savings: {
-      day: 0,
-      week: 0,
-      month: 0,
-    },
-    evChargingMargins: 0,
-    arbitrageScore: 0,
-    autonomyPercentage: 0,
-    timeToPayback: "N/A",
-  });
-
   // Operator Controls - initialized with defaults (can be loaded from config)
   const [operatorSettings, setOperatorSettings] = useState({
     eveningReserve: 30,
@@ -153,6 +137,13 @@ function DashboardContent() {
     }>,
     totalPayback: [] as Array<{ date: string; cumulative: number }>,
   });
+
+  const [energyEarnings, setEnergyEarnings] = useState<{
+    total_earnings: number;
+    total_solar_earnings: number;
+  } | null>(null);
+  const [chargerRevenue, setChargerRevenue] = useState<number>(0);
+  const [autonomy, setAutonomy] = useState<number>(0);
 
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
@@ -423,6 +414,51 @@ function DashboardContent() {
               });
             }
 
+            // Load energy earnings for savings KPI
+            try {
+              const earnings = await installationsApi.getEnergyEarnings(
+                foundInstallationId,
+                "day",
+                token,
+              );
+              setEnergyEarnings(earnings);
+            } catch (err) {
+              console.error("Failed to load energy earnings:", err);
+            }
+
+            // Load charger revenue
+            try {
+              const charger = await installationsApi.getChargerPower(
+                foundInstallationId,
+                "day",
+                token,
+              );
+              setChargerRevenue(charger.total_revenue);
+            } catch (err) {
+              console.error("Failed to load charger power:", err);
+            }
+
+            // Calculate autonomy from live data
+            if (
+              data.latest_measurements?.battery &&
+              data.latest_measurements?.inverters &&
+              data.latest_measurements?.meter
+            ) {
+              const solarKw = (data.latest_measurements.inverters || []).reduce(
+                (sum: number, inv: any) => sum + (inv.power_kw || 0),
+                0,
+              );
+              const batteryDischarge = Math.max(
+                0,
+                -(data.latest_measurements.battery?.power_kw || 0),
+              );
+              const gridImport = data.latest_measurements.meter?.import_kw || 0;
+              const total = solarKw + batteryDischarge + gridImport;
+              setAutonomy(
+                total > 0 ? ((solarKw + batteryDischarge) / total) * 100 : 0,
+              );
+            }
+
             // Update inverters
             if (data.latest_measurements?.inverters && data.inverters) {
               const inverterMeasurements = data.latest_measurements.inverters;
@@ -528,18 +564,6 @@ function DashboardContent() {
               (sum: number, ev: any) => sum + (ev.revenue_eur || 0),
               0,
             );
-
-            setFinancialKPIs({
-              savings: {
-                day: dailySavings,
-                week: dailySavings * 7,
-                month: dailySavings * 30,
-              },
-              evChargingMargins: evRevenue,
-              arbitrageScore: arbitrageScore,
-              autonomyPercentage: autonomy,
-              timeToPayback: autonomy > 50 ? "4.2 years" : "5+ years",
-            });
 
             // Generate revenue chart data from recent trends
             const now = new Date();
@@ -731,11 +755,10 @@ function DashboardContent() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
             {/* Weather Card - First position, 2 cols, spans 2 rows */}
             <div className="md:col-span-2 md:row-span-2 flex">
-              <WeatherWidget
+              <LastSeenWidget
                 installationId={installationId}
-                installation={installation}
                 token={token}
-                className="w-full max-h-[360px]"
+                className="w-full"
               />
             </div>
 
@@ -811,86 +834,47 @@ function DashboardContent() {
             {/* Position 1: Energy Overview and Solar Power stacked vertically */}
             <div className="md:col-span-2 flex flex-col gap-3">
               <div className="card p-4 flex-1 relative overflow-hidden">
-                {/* Dynamic Background Line Graph based on KPI values */}
-                {(() => {
-                  // Normalize values to 0-100 scale for the graph
-                  const savingsNorm = Math.min(
-                    100,
-                    (financialKPIs.savings.day / 50) * 100,
-                  ); // Max €50
-                  const autonomyNorm = financialKPIs.autonomyPercentage; // Already 0-100
-                  const arbitrageNorm = financialKPIs.arbitrageScore; // Already 0-100
-                  const evNorm = Math.min(
-                    100,
-                    (financialKPIs.evChargingMargins / 20) * 100,
-                  ); // Max €20
-
-                  // Convert to Y positions (inverted because SVG Y goes down)
-                  const points = [
-                    { x: 0, y: 100 - savingsNorm * 0.7 - 10 },
-                    { x: 50, y: 100 - autonomyNorm * 0.7 - 10 },
-                    { x: 100, y: 100 - arbitrageNorm * 0.7 - 10 },
-                    { x: 150, y: 100 - evNorm * 0.7 - 10 },
-                    {
-                      x: 200,
-                      y: 100 - ((savingsNorm + autonomyNorm) / 2) * 0.7 - 10,
-                    },
-                  ];
-
-                  // Create smooth curve path
-                  const linePath = `M${points[0].x},${points[0].y} C${points[0].x + 15},${points[0].y} ${points[1].x - 15},${points[1].y} ${points[1].x},${points[1].y} S${points[2].x - 15},${points[2].y} ${points[2].x},${points[2].y} S${points[3].x - 15},${points[3].y} ${points[3].x},${points[3].y} S${points[4].x - 15},${points[4].y} ${points[4].x},${points[4].y}`;
-                  const areaPath = `${linePath} L200,100 L0,100 Z`;
-
-                  return (
-                    <div className="absolute inset-0 opacity-25 pointer-events-none">
-                      <svg
-                        className="w-full h-full"
-                        viewBox="0 0 200 100"
-                        preserveAspectRatio="none"
+                {/* Background line */}
+                <div className="absolute inset-0 opacity-25 pointer-events-none">
+                  <svg
+                    className="w-full h-full"
+                    viewBox="0 0 200 100"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient
+                        id="energyGradient"
+                        x1="0%"
+                        y1="0%"
+                        x2="0%"
+                        y2="100%"
                       >
-                        <defs>
-                          <linearGradient
-                            id="energyGradient"
-                            x1="0%"
-                            y1="0%"
-                            x2="0%"
-                            y2="100%"
-                          >
-                            <stop
-                              offset="0%"
-                              stopColor="#10b981"
-                              stopOpacity="0.5"
-                            />
-                            <stop
-                              offset="100%"
-                              stopColor="#10b981"
-                              stopOpacity="0"
-                            />
-                          </linearGradient>
-                        </defs>
-                        <path d={areaPath} fill="url(#energyGradient)" />
-                        <path
-                          d={linePath}
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth="2"
-                          strokeOpacity="0.8"
+                        <stop
+                          offset="0%"
+                          stopColor="#10b981"
+                          stopOpacity="0.5"
                         />
-                        {/* Data points */}
-                        {points.slice(0, 4).map((p, i) => (
-                          <circle
-                            key={i}
-                            cx={p.x}
-                            cy={p.y}
-                            r="3"
-                            fill="#10b981"
-                            fillOpacity="0.6"
-                          />
-                        ))}
-                      </svg>
-                    </div>
-                  );
-                })()}
+                        <stop
+                          offset="100%"
+                          stopColor="#10b981"
+                          stopOpacity="0"
+                        />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M0,60 C20,50 40,30 80,40 S140,20 200,30 L200,100 L0,100 Z"
+                      fill="url(#energyGradient)"
+                    />
+                    <path
+                      d="M0,60 C20,50 40,30 80,40 S140,20 200,30"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="2"
+                      strokeOpacity="0.8"
+                    />
+                  </svg>
+                </div>
+
                 {/* Content */}
                 <div className="relative z-10">
                   <div className="text-xs uppercase mb-3 text-text-muted">
@@ -903,13 +887,13 @@ function DashboardContent() {
                           className="text-xs mb-1"
                           style={{ color: "#6b7280" }}
                         >
-                          {t("financial.savings")}
+                          Savings
                         </div>
                         <div
                           className="text-xl font-bold"
                           style={{ color: "#10b981" }}
                         >
-                          €{financialKPIs.savings.day.toFixed(2)}
+                          €{(energyEarnings?.total_earnings ?? 0).toFixed(2)}
                         </div>
                       </div>
                       <div>
@@ -917,49 +901,34 @@ function DashboardContent() {
                           className="text-xs mb-1"
                           style={{ color: "#6b7280" }}
                         >
-                          {t("financial.autonomy")}
+                          Autonomy
                         </div>
                         <div
                           className="text-xl font-bold"
                           style={{ color: "#10b981" }}
                         >
-                          {financialKPIs.autonomyPercentage.toFixed(1)}%
+                          {autonomy.toFixed(1)}%
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div
-                          className="text-xs mb-1"
-                          style={{ color: "#6b7280" }}
-                        >
-                          {t("financial.arbitrageScore")}
-                        </div>
-                        <div
-                          className="text-xl font-bold"
-                          style={{ color: "#3b82f6" }}
-                        >
-                          {financialKPIs.arbitrageScore.toFixed(1)}%
-                        </div>
+                    <div>
+                      <div
+                        className="text-xs mb-1"
+                        style={{ color: "#6b7280" }}
+                      >
+                        EV Charging
                       </div>
-                      <div>
-                        <div
-                          className="text-xs mb-1"
-                          style={{ color: "#6b7280" }}
-                        >
-                          {t("financial.evChargingMargins")}
-                        </div>
-                        <div
-                          className="text-xl font-bold"
-                          style={{ color: "#8b5cf6" }}
-                        >
-                          €{financialKPIs.evChargingMargins.toFixed(2)}
-                        </div>
+                      <div
+                        className="text-xl font-bold"
+                        style={{ color: "#8b5cf6" }}
+                      >
+                        €{chargerRevenue.toFixed(2)}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+
               {inverters.length > 0 && (
                 <div className="card p-6 flex-1 flex flex-col">
                   <div className="text-xs uppercase mb-4 text-text-muted">
