@@ -1,29 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Bar, Chart } from "react-chartjs-2";
+import { useState, useEffect } from "react";
+import {  Chart } from "react-chartjs-2";
+import { installationsApi } from "@/lib/api/client";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  BarController,
   LineElement,
+  LineController,
   PointElement,
   Tooltip,
   Legend,
 } from "chart.js";
-import { installationsApi } from "@/lib/api/client";
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  BarController,
   LineElement,
+  LineController,
   PointElement,
   Tooltip,
   Legend,
 );
-
 interface GridDataPoint {
   period: string;
   import_kw: number;
