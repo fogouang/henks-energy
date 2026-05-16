@@ -1643,3 +1643,61 @@ async def get_energy_earnings(
         "total_grid_earnings": round(sum(d["grid_earnings"] for d in data), 2),
         "total_earnings": round(sum(d["total_earnings"] for d in data), 2),
     }
+    
+
+@router.patch("/{installation_id}/configs")
+async def update_installation_configs(
+    installation_id: int,
+    configs: dict,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update installation configs (key-value pairs)."""
+    from backend.models.config import InstallationConfig
+    
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    for key, value in configs.items():
+        result = await db.execute(
+            select(InstallationConfig).where(
+                InstallationConfig.installation_id == installation_id,
+                InstallationConfig.config_key == key,
+            )
+        )
+        config = result.scalar_one_or_none()
+        if config:
+            config.config_value = str(value)
+        else:
+            db.add(InstallationConfig(
+                installation_id=installation_id,
+                config_key=key,
+                config_value=str(value),
+                value_type='number' if key != 'ACTIVE' else 'boolean',
+            ))
+    
+    await db.commit()
+    return {"status": "ok"}
+
+
+@router.get("/{installation_id}/configs")
+async def get_installation_configs(
+    installation_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get all installation configs."""
+    from backend.models.config import InstallationConfig
+    
+    has_access = await check_installation_access(db, current_user, installation_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    result = await db.execute(
+        select(InstallationConfig).where(
+            InstallationConfig.installation_id == installation_id,
+        )
+    )
+    configs = result.scalars().all()
+    return {c.config_key: c.config_value for c in configs}

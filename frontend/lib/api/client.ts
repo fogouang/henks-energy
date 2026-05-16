@@ -365,26 +365,44 @@ export const installationsApi = {
   },
 
   async getEnergyEarnings(id: number, period: string, token: string) {
-  return apiFetch<{
-    period: string;
-    data: Array<{
+    return apiFetch<{
       period: string;
-      solar_kw: number;
-      solar_earnings: number;
-      grid_net_kw: number;
-      grid_earnings: number;
-      epex_price: number | null;
+      data: Array<{
+        period: string;
+        solar_kw: number;
+        solar_earnings: number;
+        grid_net_kw: number;
+        grid_earnings: number;
+        epex_price: number | null;
+        manual_price: number;
+        total_earnings: number;
+      }>;
       manual_price: number;
+      total_solar_earnings: number;
+      total_grid_earnings: number;
       total_earnings: number;
-    }>;
-    manual_price: number;
-    total_solar_earnings: number;
-    total_grid_earnings: number;
-    total_earnings: number;
-  }>(`/api/installations/${id}/energy-earnings?period=${period}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-},
+    }>(`/api/installations/${id}/energy-earnings?period=${period}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async getConfigs(id: number, token: string) {
+    return apiFetch<Record<string, string>>(
+      `/api/installations/${id}/configs`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+  },
+  async updateConfigs(
+    id: number,
+    configs: Record<string, string>,
+    token: string,
+  ) {
+    return apiFetch<{ status: string }>(`/api/installations/${id}/configs`, {
+      method: "PATCH",
+      body: JSON.stringify(configs),
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
 };
 
 /**
