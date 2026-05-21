@@ -555,15 +555,14 @@ async def update_installation(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Update installation."""
-    # Check access (need CONFIGURE level or admin)
-    has_access = await check_installation_access(
-        db, current_user, installation_id, required_level=AccessLevel.CONFIGURE
-    )
-    if not has_access:
+    """Update installation. Admin only."""
+    from backend.models.user import UserRole
+    
+
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this installation",
+            detail="Admin access required",
         )
     
     result = await db.execute(
@@ -1367,7 +1366,7 @@ async def get_battery_usable(
             FROM battery_measurements
             WHERE installation_id = :installation_id
             AND timestamp >= :start
-            AND usable IS NOT NULL
+            AND available_capacity IS NOT NULL
             GROUP BY date_trunc('{trunc_unit}', timestamp)
             ORDER BY date_trunc('{trunc_unit}', timestamp)
         """),
@@ -1543,9 +1542,8 @@ async def get_energy_earnings(
 ):
     """Get energy earnings per hour - solar (orange) and grid (blue)."""
     from datetime import datetime, timezone, timedelta
-    from sqlalchemy import text
+    from sqlalchemy import text, func as sqlfunc
     from backend.models.epex import EPEXSpotPrice
-    from backend.models.config import InstallationConfig
 
     has_access = await check_installation_access(db, current_user, installation_id)
     if not has_access:
@@ -1562,15 +1560,12 @@ async def get_energy_earnings(
         start = now - timedelta(days=30)
         trunc_unit = 'day'
 
-    # Get manual price from installation_configs
-    config_result = await db.execute(
-        select(InstallationConfig).where(
-            InstallationConfig.installation_id == installation_id,
-            InstallationConfig.config_key == "ELECTRICITY_PRICE",
-        )
+    # Get EPEX daily average as reference price
+    epex_avg_result = await db.execute(
+        select(sqlfunc.avg(EPEXSpotPrice.price))
+        .where(EPEXSpotPrice.date_hour >= start)
     )
-    config = config_result.scalar_one_or_none()
-    manual_price = float(config.config_value) if config else 0.25
+    epex_avg = float(epex_avg_result.scalar() or 0.25)
 
     # Get solar energy (inverter)
     solar_result = await db.execute(
@@ -1604,7 +1599,7 @@ async def get_energy_earnings(
     )
     grid_rows = {row[0]: row[1] for row in grid_result.all()}
 
-    # Get EPEX prices
+    # Get EPEX prices per hour
     epex_result = await db.execute(
         select(EPEXSpotPrice)
         .where(EPEXSpotPrice.date_hour >= start)
@@ -1621,8 +1616,8 @@ async def get_energy_earnings(
         grid_net_kw = grid_rows.get(period_ts, 0) or 0
         epex_price = epex_prices.get(period_ts)
 
-        solar_earnings = round(solar_kw * manual_price, 3)
-        grid_earnings = round(grid_net_kw * ((manual_price - epex_price) if epex_price else 0), 3)
+        solar_earnings = round(solar_kw * epex_avg, 3)
+        grid_earnings = round(grid_net_kw * ((epex_avg - epex_price) if epex_price else 0), 3)
 
         data.append({
             "period": period_ts.isoformat(),
@@ -1631,19 +1626,18 @@ async def get_energy_earnings(
             "grid_net_kw": round(grid_net_kw, 2),
             "grid_earnings": grid_earnings,
             "epex_price": round(epex_price, 4) if epex_price else None,
-            "manual_price": manual_price,
+            "epex_avg": round(epex_avg, 4),
             "total_earnings": round(solar_earnings + grid_earnings, 3),
         })
 
     return {
         "period": period,
         "data": data,
-        "manual_price": manual_price,
+        "epex_avg": round(epex_avg, 4),
         "total_solar_earnings": round(sum(d["solar_earnings"] for d in data), 2),
         "total_grid_earnings": round(sum(d["grid_earnings"] for d in data), 2),
         "total_earnings": round(sum(d["total_earnings"] for d in data), 2),
     }
-    
 
 @router.patch("/{installation_id}/configs")
 async def update_installation_configs(
@@ -1652,12 +1646,12 @@ async def update_installation_configs(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Update installation configs (key-value pairs)."""
+    """Update installation configs (key-value pairs). Admin only."""
     from backend.models.config import InstallationConfig
-    
-    has_access = await check_installation_access(db, current_user, installation_id)
-    if not has_access:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from backend.models.user import UserRole
+
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
 
     for key, value in configs.items():
         result = await db.execute(
@@ -1676,10 +1670,9 @@ async def update_installation_configs(
                 config_value=str(value),
                 value_type='number' if key != 'ACTIVE' else 'boolean',
             ))
-    
+
     await db.commit()
     return {"status": "ok"}
-
 
 @router.get("/{installation_id}/configs")
 async def get_installation_configs(

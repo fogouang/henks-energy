@@ -1,9 +1,7 @@
 """Permission checking utilities."""
 from datetime import datetime, timezone
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.installation import Installation
 from backend.models.user import AccessLevel, User, UserInstallation
 
@@ -16,12 +14,12 @@ async def check_installation_access(
 ) -> bool:
     """Check if user has access to installation."""
     from backend.models.user import UserRole
-    
-    # Admins have full access
+
+    # Admins have full access to everything
     if user.role == UserRole.ADMIN:
         return True
-    
-    # Check user-installation access
+
+    # Regular users: check user-installation access
     result = await db.execute(
         select(UserInstallation).where(
             UserInstallation.user_id == user.id,
@@ -31,21 +29,15 @@ async def check_installation_access(
         )
     )
     user_installation = result.scalar_one_or_none()
-    
+
     if user_installation is None:
         return False
-    
-    # Check access level
-    level_map = {
-        AccessLevel.VIEW: 1,
-        AccessLevel.CONFIGURE: 2,
-        AccessLevel.ADMIN: 3,
-    }
-    
-    user_level = level_map.get(user_installation.access_level, 0)
-    required_level_value = level_map.get(required_level, 0)
-    
-    return user_level >= required_level_value
+
+    # Regular users can only VIEW — never configure or admin
+    if required_level != AccessLevel.VIEW:
+        return False
+
+    return True
 
 
 async def get_user_installations(
@@ -54,28 +46,17 @@ async def get_user_installations(
 ) -> list[Installation]:
     """Get all installations accessible to user."""
     from backend.models.user import UserRole
-    from sqlalchemy import select
-    
-    # Admins see installations that have at least one active (non-deleted) user
-    # so orphaned installations (e.g. from users deleted before cleanup existed) are hidden
+
+    # Admins see ALL installations
     if user.role == UserRole.ADMIN:
         result = await db.execute(
             select(Installation)
-            .join(
-                UserInstallation,
-                (UserInstallation.installation_id == Installation.id)
-                & (UserInstallation.deleted_at.is_(None)),
-            )
-            .join(
-                User,
-                (User.id == UserInstallation.user_id) & (User.deleted_at.is_(None)),
-            )
             .where(Installation.deleted_at.is_(None))
-            .distinct()
+            .order_by(Installation.id)
         )
         return list(result.scalars().all())
-    
-    # Get installations from user_installations
+
+    # Regular users see only their linked installations
     result = await db.execute(
         select(Installation)
         .join(UserInstallation)
@@ -103,4 +84,3 @@ async def check_user_access(
     """Check if admin or accessing own user."""
     from backend.models.user import UserRole
     return current_user.role == UserRole.ADMIN or current_user.id == target_user_id
-

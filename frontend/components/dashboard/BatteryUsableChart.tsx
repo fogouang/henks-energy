@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -34,7 +33,6 @@ export function BatteryUsableChart({ installationId, token, className }: Battery
 
   useEffect(() => {
     if (!installationId || !token) return;
-
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -46,7 +44,6 @@ export function BatteryUsableChart({ installationId, token, className }: Battery
         setLoading(false);
       }
     };
-
     fetchData();
   }, [installationId, token, period]);
 
@@ -56,12 +53,14 @@ export function BatteryUsableChart({ installationId, token, className }: Battery
     return date.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' });
   });
 
+  const latestAvailable = data.length > 0 ? (data[data.length - 1].available_kwh ?? 0) : 0;
+
   const chartData = {
     labels,
     datasets: [
       {
-        label: 'Usable kWh',
-        data: data.map(d => d.usable_kwh),
+        label: 'Available kWh',
+        data: data.map(d => d.available_kwh ?? 0),
         backgroundColor: '#10b981cc',
         borderColor: '#10b981',
         borderWidth: 1,
@@ -74,9 +73,9 @@ export function BatteryUsableChart({ installationId, token, className }: Battery
     <div className={`card p-4 flex flex-col ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-text">Battery Usable</h3>
+          <h3 className="text-sm font-semibold text-text">Battery Available</h3>
           <span className="text-xs text-text-muted">
-            {data.length > 0 ? `${data[data.length - 1].usable_kwh.toFixed(1)} kWh` : '—'}
+            {data.length > 0 ? `${latestAvailable.toFixed(1)} kWh` : '—'}
           </span>
         </div>
         <div className="flex gap-1">
@@ -110,8 +109,7 @@ export function BatteryUsableChart({ installationId, token, className }: Battery
                     label: (item) => {
                       const d = data[item.dataIndex];
                       return [
-                        `Usable: ${d.usable_kwh.toFixed(2)} kWh`,
-                        d.available_kwh ? `Available: ${d.available_kwh.toFixed(2)} kWh` : '',
+                        `Available: ${(d.available_kwh ?? 0).toFixed(2)} kWh`,
                         `SoC: ${d.soc_percentage.toFixed(1)}%`,
                       ];
                     },

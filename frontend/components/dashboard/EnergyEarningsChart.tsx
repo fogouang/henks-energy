@@ -32,7 +32,7 @@ interface EarningsDataPoint {
   grid_net_kw: number;
   grid_earnings: number;
   epex_price: number | null;
-  manual_price: number;
+  epex_avg: number;
   total_earnings: number;
 }
 
@@ -53,7 +53,7 @@ export function EnergyEarningsChart({
     solar: 0,
     grid: 0,
     total: 0,
-    manual_price: 0.25,
+    epex_avg: 0,
   });
   const [loading, setLoading] = useState(false);
 
@@ -69,10 +69,10 @@ export function EnergyEarningsChart({
         );
         setData(json.data || []);
         setTotals({
-          solar: json.total_solar_earnings,
-          grid: json.total_grid_earnings,
-          total: json.total_earnings,
-          manual_price: json.manual_price,
+          solar: json.total_solar_earnings ?? 0,
+          grid: json.total_grid_earnings ?? 0,
+          total: json.total_earnings ?? 0,
+          epex_avg: json.epex_avg ?? 0,
         });
       } catch (err) {
         console.error("Failed to load energy earnings:", err);
@@ -126,8 +126,7 @@ export function EnergyEarningsChart({
         <div>
           <h3 className="text-sm font-semibold text-text">Energy Earnings</h3>
           <span className="text-xs text-text-muted">
-            Total: €{totals.total.toFixed(2)} · Price: €
-            {totals.manual_price.toFixed(2)}/kWh
+            Total: €{totals.total.toFixed(2)} · EPEX avg: €{totals.epex_avg.toFixed(4)}/kWh
           </span>
         </div>
         <div className="flex gap-1">
@@ -164,10 +163,8 @@ export function EnergyEarningsChart({
                       return [
                         `Solar: €${d.solar_earnings.toFixed(3)} (${d.solar_kw.toFixed(2)} kW)`,
                         `Grid: €${d.grid_earnings.toFixed(3)} (${d.grid_net_kw.toFixed(2)} kW)`,
-                        d.epex_price
-                          ? `EPEX: €${d.epex_price.toFixed(4)}/kWh`
-                          : "",
-                        `Manual: €${d.manual_price.toFixed(4)}/kWh`,
+                        d.epex_price ? `EPEX: €${d.epex_price.toFixed(4)}/kWh` : "",
+                        `EPEX avg: €${d.epex_avg.toFixed(4)}/kWh`,
                         `Total: €${d.total_earnings.toFixed(3)}`,
                       ];
                     },

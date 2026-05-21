@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {  Chart } from "react-chartjs-2";
+import { Chart } from "react-chartjs-2";
 import { installationsApi } from "@/lib/api/client";
 import {
   Chart as ChartJS,
@@ -27,6 +27,7 @@ ChartJS.register(
   Tooltip,
   Legend,
 );
+
 interface GridDataPoint {
   period: string;
   import_kw: number;
@@ -96,6 +97,28 @@ export function GridEnergyChart({
       },
       {
         type: "line" as const,
+        label: "Import kW",
+        data: data.map((d) => d.import_kw),
+        borderColor: "#ef4444",
+        backgroundColor: "transparent",
+        borderWidth: 1,
+        pointRadius: 0,
+        borderDash: [4, 4],
+        yAxisID: "y",
+      },
+      {
+        type: "line" as const,
+        label: "Export kW",
+        data: data.map((d) => d.export_kw),
+        borderColor: "#10b981",
+        backgroundColor: "transparent",
+        borderWidth: 1,
+        pointRadius: 0,
+        borderDash: [4, 4],
+        yAxisID: "y",
+      },
+      {
+        type: "line" as const,
         label: "EPEX €/kWh",
         data: data.map((d) => d.price),
         borderColor: "#f97316",
@@ -113,7 +136,9 @@ export function GridEnergyChart({
         <div>
           <h3 className="text-sm font-semibold text-text">Grid Energy</h3>
           <span className="text-xs text-text-muted">
-            import_kw − export_kw · EPEX background
+            <span style={{ color: "#ef4444" }}>■</span> Import &nbsp;
+            <span style={{ color: "#10b981" }}>■</span> Export &nbsp;
+            <span style={{ color: "#f97316" }}>■</span> EPEX
           </span>
         </div>
         <div className="flex gap-1">
@@ -154,7 +179,10 @@ export function GridEnergyChart({
                           `Export: ${d.export_kw.toFixed(2)} kW`,
                         ];
                       }
-                      return d.price ? `EPEX: €${d.price.toFixed(4)}/kWh` : "";
+                      if (item.datasetIndex === 3) {
+                        return d.price ? `EPEX: €${d.price.toFixed(4)}/kWh` : "";
+                      }
+                      return "";
                     },
                   },
                 },

@@ -374,10 +374,10 @@ export const installationsApi = {
         grid_net_kw: number;
         grid_earnings: number;
         epex_price: number | null;
-        manual_price: number;
+        epex_avg: number;
         total_earnings: number;
       }>;
-      manual_price: number;
+      epex_avg: number;
       total_solar_earnings: number;
       total_grid_earnings: number;
       total_earnings: number;

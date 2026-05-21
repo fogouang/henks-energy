@@ -70,14 +70,14 @@ export function InstallationDevicesView({
   return (
     <div className="card overflow-hidden">
       {/* Installations table */}
-      <table className="w-full text-xs">
+      <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-surface">
-            <th className="px-3 py-2 text-left text-text-muted font-medium">ID</th>
-            <th className="px-3 py-2 text-left text-text-muted font-medium">Name</th>
-            <th className="px-3 py-2 text-left text-text-muted font-medium">Location</th>
-            <th className="px-3 py-2 text-left text-text-muted font-medium">Last seen</th>
-            <th className="px-3 py-2 text-left text-text-muted font-medium">Actions</th>
+            <th className="px-3 py-2 text-left text-text-muted font-medium text-sm">ID</th>
+            <th className="px-3 py-2 text-left text-text-muted font-medium text-sm">Name</th>
+            <th className="px-3 py-2 text-left text-text-muted font-medium text-sm">Location</th>
+            <th className="px-3 py-2 text-left text-text-muted font-medium text-sm">Last seen</th>
+            <th className="px-3 py-2 text-left text-text-muted font-medium text-sm">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -89,10 +89,10 @@ export function InstallationDevicesView({
               <React.Fragment key={inst.id}>
                 {/* Installation row */}
                 <tr className="border-b border-border/50 hover:bg-border/20 bg-surface/30">
-                  <td className="px-3 py-1.5 text-text-muted font-mono">{inst.id}</td>
-                  <td className="px-3 py-1.5 font-medium text-text">{inst.name}</td>
-                  <td className="px-3 py-1.5 text-text-muted">{formatLocation(inst)}</td>
-                  <td className="px-3 py-1.5 text-text-muted">{formatDate(lastSeen)}</td>
+                  <td className="px-3 py-1.5 text-text-muted font-mono text-sm">{inst.id}</td>
+                  <td className="px-3 py-1.5 font-medium text-text text-sm">{inst.name}</td>
+                  <td className="px-3 py-1.5 text-text-muted text-sm">{formatLocation(inst)}</td>
+                  <td className="px-3 py-1.5 text-text-muted text-sm">{formatDate(lastSeen)}</td>
                   <td className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
                       <button
@@ -107,7 +107,9 @@ export function InstallationDevicesView({
                           onClick={() => onEditInstallation(inst)}
                           className="text-text-muted hover:text-text hover:underline"
                         >
-                          Edit
+                  
+                  
+                  \                                                Edit
                         </button>
                       )}
                       {onRegisterDevice && (
